@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// Each user can read and write only their own diary document at users/{uid}.
+// Paste these rules into Firestore -> Rules in the Firebase console.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
