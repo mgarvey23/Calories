@@ -148,3 +148,17 @@ export function emptyDay(date: string): DayLog {
     meals: { breakfast: [], lunch: [], dinner: [], snack: [] },
   };
 }
+
+/**
+ * The diary operations the main UI needs, independent of where the data is
+ * stored. Both the local (localStorage) and Firebase-backed hooks return this
+ * shape so the view doesn't care which backend is active.
+ */
+export interface DiaryApi {
+  state: DiaryState;
+  addEntry: (date: string, meal: MealType, entry: MealEntry) => void;
+  removeEntry: (date: string, meal: MealType, entryId: string) => void;
+  updateEntryQuantity: (date: string, meal: MealType, entryId: string, quantity: number) => void;
+  updateSettings: (patch: Partial<Settings>) => void;
+  replaceState: (next: DiaryState) => void;
+}

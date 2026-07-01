@@ -50,8 +50,11 @@ npm run build          # type-check and build for production into dist/
 npm run preview        # preview the production build locally
 ```
 
-The app runs without Firebase config, but shows setup instructions instead of a
-sign-in button until you provide it.
+The app runs without Firebase config: choose **"Continue without signing in"**
+to use **local mode**, where the diary is stored on the device (localStorage)
+and no account is needed. This is the quickest way to try the tracker. Sign-in
+and cross-device sync light up once Firebase is configured; a local diary is
+migrated to the cloud on first sign-in.
 
 ## Firebase setup
 

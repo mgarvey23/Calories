@@ -107,6 +107,7 @@ input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent)
   font-weight: 700;
 }
 .signin-error { color: var(--over); font-size: 0.85rem; }
+.local-button { margin-top: 1.25rem; width: 100%; }
 .setup-notice { text-align: left; font-size: 0.9rem; }
 .setup-notice ol { padding-left: 1.2rem; line-height: 1.6; }
 .setup-notice code { background: var(--bg); padding: 0 0.3rem; border-radius: 4px; }
