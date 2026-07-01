@@ -32,18 +32,45 @@ login). Your data is stored locally and can be exported/imported for backup.
 - **Daily goal + progress** — set a target and see how much you have left.
 - **Export / import** — back up your diary as JSON or move it between devices.
 
+- **Accounts & cloud sync** — sign in with Google; your diary is stored in
+  Cloud Firestore and synced across all your devices, with offline support.
+
 ## Tech stack
 
-React + TypeScript + Vite. No backend — the diary lives in `localStorage`.
+React + TypeScript + Vite, with **Firebase** (Google Authentication + Cloud
+Firestore) for sign-in and cross-device sync.
 
 ## Getting started
 
 ```bash
 npm install
-npm run dev      # start the dev server (http://localhost:5173)
-npm run build    # type-check and build for production into dist/
-npm run preview  # preview the production build locally
+cp .env.example .env   # then fill in your Firebase config (see below)
+npm run dev            # start the dev server (http://localhost:5173)
+npm run build          # type-check and build for production into dist/
+npm run preview        # preview the production build locally
 ```
+
+The app runs without Firebase config, but shows setup instructions instead of a
+sign-in button until you provide it.
+
+## Firebase setup
+
+1. Go to [console.firebase.google.com](https://console.firebase.google.com) and
+   **create a project**.
+2. **Add a Web app** (the `</>` icon). Copy the config values it shows into your
+   `.env` file (`VITE_FIREBASE_*`, matching `.env.example`).
+3. **Authentication → Get started → Sign-in method →** enable **Google**.
+4. **Firestore Database → Create database** (start in production mode).
+5. **Firestore → Rules:** paste the contents of [`firestore.rules`](firestore.rules)
+   and publish. This restricts each user to their own `users/{uid}` document.
+6. **Authentication → Settings → Authorized domains:** add the domains you'll
+   use — `localhost` is there by default; add `mgarvey23.github.io` for the
+   deployed site.
+7. Restart `npm run dev` and sign in.
+
+Your data model in Firestore is one document per user at `users/{uid}` holding
+the whole diary. Any diary you created locally before signing in is migrated up
+automatically on first sign-in.
 
 ## Deploying to GitHub Pages
 
@@ -51,6 +78,9 @@ npm run preview  # preview the production build locally
 2. In the repository **Settings → Pages**, set **Source** to **GitHub Actions**.
 3. The included workflow (`.github/workflows/deploy.yml`) builds and publishes on
    every push to `main`.
+4. Add your Firebase config as **repository secrets** (Settings → Secrets and
+   variables → Actions) using the same `VITE_FIREBASE_*` names as `.env.example`,
+   so the deployed build can reach Firebase.
 
 The Vite `base` path defaults to `/calories/` to match a project site at
 `https://<user>.github.io/calories/`. The deploy workflow overrides it with the

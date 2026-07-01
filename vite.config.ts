@@ -9,4 +9,15 @@ const base = process.env.BASE_PATH ?? '/calories/';
 export default defineConfig({
   plugins: [react()],
   base,
+  build: {
+    rollupOptions: {
+      output: {
+        // Split the heavy Firebase SDK into its own chunk so it caches
+        // independently of app code between deploys.
+        manualChunks: {
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+        },
+      },
+    },
+  },
 });

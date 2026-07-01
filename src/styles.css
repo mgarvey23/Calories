@@ -51,7 +51,66 @@ input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent)
   margin-bottom: 1rem;
 }
 .app-header h1 { font-size: 1.4rem; margin: 0; }
-.header-actions { display: flex; gap: 0.5rem; }
+.header-actions { display: flex; gap: 0.5rem; align-items: center; }
+.user-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  color: var(--muted);
+}
+
+/* Sign-in ----------------------------------------------------------------- */
+.signin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+.signin-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+.signin-card h1 { margin-top: 0; }
+.google-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+}
+.google-g {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: #4285f4;
+  color: white;
+  font-weight: 700;
+}
+.signin-error { color: var(--over); font-size: 0.85rem; }
+.setup-notice { text-align: left; font-size: 0.9rem; }
+.setup-notice ol { padding-left: 1.2rem; line-height: 1.6; }
+.setup-notice code { background: var(--bg); padding: 0 0.3rem; border-radius: 4px; }
+.setup-hint { color: var(--muted); font-size: 0.8rem; }
 
 .app-main {
   display: grid;
