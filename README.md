@@ -18,9 +18,15 @@ login). Your data is stored locally and can be exported/imported for backup.
     products (brands, barcodes, label nutrition) — no API key needed.
   - [USDA FoodData Central](https://fdc.nal.usda.gov/) for generic/whole foods
     (optional free API key for higher rate limits).
-- **Manual entry fallback** — add a food by hand when it isn't found.
-- **Per-serving quantities** — set how many servings you ate; calories recompute
-  live.
+- **Barcode scanning** — tap the 📷 button to scan a product barcode with your
+  phone camera; the product is looked up on Open Food Facts automatically.
+  (Requires HTTPS — works on the deployed site and on `localhost`.)
+- **Macro tracking** — protein, carbs and fat are shown per food, per meal and
+  as daily totals alongside calories.
+- **Manual entry fallback** — add a food (with optional macros) by hand when it
+  isn't found.
+- **Per-serving quantities** — set how many servings you ate; calories and
+  macros recompute live.
 - **Daily goal + progress** — set a target and see how much you have left.
 - **Export / import** — back up your diary as JSON or move it between devices.
 

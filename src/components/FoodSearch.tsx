@@ -1,7 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { FoodItem, MealType } from '../types';
 import { MEAL_LABELS } from '../types';
-import { searchFoods, toFoodItem, type FoodSearchResult } from '../services/foodApi';
+import {
+  fetchProductByBarcode,
+  searchFoods,
+  toFoodItem,
+  type FoodSearchResult,
+} from '../services/foodApi';
+
+// The barcode scanner pulls in a heavy decoding library; load it on demand so
+// it stays out of the initial bundle until the user taps "scan".
+const BarcodeScanner = lazy(() =>
+  import('./BarcodeScanner').then((m) => ({ default: m.BarcodeScanner })),
+);
 
 interface FoodSearchProps {
   meal: MealType;
@@ -26,6 +37,7 @@ export function FoodSearch({ meal, usdaApiKey, onAdd }: FoodSearchProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // Debounced search as the user types.
@@ -61,14 +73,45 @@ export function FoodSearch({ meal, usdaApiKey, onAdd }: FoodSearchProps) {
     setResults([]);
   }
 
+  async function handleBarcode(barcode: string) {
+    setScannerOpen(false);
+    setLoading(true);
+    setError(null);
+    setResults([]);
+    try {
+      const product = await fetchProductByBarcode(barcode);
+      if (product) {
+        // Surface as a result so the user can confirm before logging.
+        setResults([product]);
+      } else {
+        setError(`No product found for barcode ${barcode}. Try searching or add it manually.`);
+      }
+    } catch {
+      setError('Barcode lookup failed. Check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="food-search">
-      <input
-        type="text"
-        placeholder={`Add food to ${MEAL_LABELS[meal].toLowerCase()}…`}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
+      <div className="search-input-row">
+        <input
+          type="text"
+          placeholder={`Add food to ${MEAL_LABELS[meal].toLowerCase()}…`}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <button
+          type="button"
+          className="scan-button"
+          onClick={() => setScannerOpen(true)}
+          title="Scan a barcode"
+          aria-label="Scan a barcode"
+        >
+          📷
+        </button>
+      </div>
       {loading && <div className="search-status">Searching…</div>}
       {error && <div className="search-status error">{error}</div>}
 
@@ -83,6 +126,11 @@ export function FoodSearch({ meal, usdaApiKey, onAdd }: FoodSearchProps) {
                 </span>
                 <span className="result-meta">
                   {r.calories} kcal / {r.servingSize}{r.servingUnit}
+                  {(r.protein !== undefined || r.carbs !== undefined || r.fat !== undefined) && (
+                    <span className="result-macros">
+                      P {Math.round(r.protein ?? 0)} · C {Math.round(r.carbs ?? 0)} · F {Math.round(r.fat ?? 0)}
+                    </span>
+                  )}
                   <span className="result-source">{SOURCE_LABELS[r.source]}</span>
                 </span>
               </button>
@@ -103,6 +151,15 @@ export function FoodSearch({ meal, usdaApiKey, onAdd }: FoodSearchProps) {
           }}
         />
       )}
+
+      {scannerOpen && (
+        <Suspense fallback={<div className="search-status">Loading scanner…</div>}>
+          <BarcodeScanner
+            onDetected={handleBarcode}
+            onClose={() => setScannerOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -112,6 +169,15 @@ function ManualEntryForm({ onAdd }: { onAdd: (food: FoodItem) => void }) {
   const [calories, setCalories] = useState('');
   const [servingSize, setServingSize] = useState('1');
   const [servingUnit, setServingUnit] = useState('serving');
+  const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [fat, setFat] = useState('');
+
+  // Parse an optional numeric macro field; blank stays undefined.
+  const optionalNum = (v: string): number | undefined => {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : undefined;
+  };
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -123,9 +189,15 @@ function ManualEntryForm({ onAdd }: { onAdd: (food: FoodItem) => void }) {
       servingSize: parseFloat(servingSize) || 1,
       servingUnit: servingUnit.trim() || 'serving',
       calories: Math.round(cals),
+      protein: optionalNum(protein),
+      carbs: optionalNum(carbs),
+      fat: optionalNum(fat),
     }));
     setName('');
     setCalories('');
+    setProtein('');
+    setCarbs('');
+    setFat('');
   }
 
   return (
@@ -145,6 +217,21 @@ function ManualEntryForm({ onAdd }: { onAdd: (food: FoodItem) => void }) {
           onChange={(e) => setServingUnit(e.target.value)}
         />
       </div>
+      <div className="manual-row">
+        <input
+          type="number" placeholder="Protein (g)" value={protein}
+          onChange={(e) => setProtein(e.target.value)} min="0" step="any"
+        />
+        <input
+          type="number" placeholder="Carbs (g)" value={carbs}
+          onChange={(e) => setCarbs(e.target.value)} min="0" step="any"
+        />
+        <input
+          type="number" placeholder="Fat (g)" value={fat}
+          onChange={(e) => setFat(e.target.value)} min="0" step="any"
+        />
+      </div>
+      <small>Macros are optional.</small>
       <button type="submit">Add food</button>
     </form>
   );

@@ -1,5 +1,5 @@
 import type { DiaryState, FoodItem, MealType } from '../types';
-import { MEAL_TYPES, dayCalories, emptyDay } from '../types';
+import { MEAL_TYPES, dayCalories, dayMacros, emptyDay, roundMacros } from '../types';
 import { formatLongDate } from '../dateUtils';
 import { MealSection } from './MealSection';
 
@@ -15,6 +15,7 @@ interface DayViewProps {
 export function DayView({ state, date, onAdd, onRemove, onQuantityChange }: DayViewProps) {
   const day = state.days[date] ?? emptyDay(date);
   const total = dayCalories(day);
+  const macros = roundMacros(dayMacros(day));
   const goal = state.settings.dailyCalorieGoal;
   const remaining = goal - total;
   const pct = goal > 0 ? Math.min(100, Math.round((total / goal) * 100)) : 0;
@@ -36,6 +37,12 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange }: DayV
             className={`progress-fill ${remaining < 0 ? 'over' : ''}`}
             style={{ width: `${pct}%` }}
           />
+        </div>
+
+        <div className="macro-bar">
+          <span className="macro protein"><strong>{macros.protein}g</strong> Protein</span>
+          <span className="macro carbs"><strong>{macros.carbs}g</strong> Carbs</span>
+          <span className="macro fat"><strong>{macros.fat}g</strong> Fat</span>
         </div>
       </div>
 

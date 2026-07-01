@@ -1,5 +1,13 @@
 import type { FoodItem, MealEntry, MealType } from '../types';
-import { MEAL_LABELS, entriesCalories, entryCalories } from '../types';
+import {
+  MEAL_LABELS,
+  entriesCalories,
+  entriesMacros,
+  entryCalories,
+  entryMacros,
+  hasMacros,
+  roundMacros,
+} from '../types';
 import { FoodSearch } from './FoodSearch';
 
 interface MealSectionProps {
@@ -15,12 +23,18 @@ interface MealSectionProps {
 export function MealSection(props: MealSectionProps) {
   const { meal, entries, usdaApiKey, onAdd, onRemove, onQuantityChange } = props;
   const total = entriesCalories(entries);
+  const macros = roundMacros(entriesMacros(entries));
 
   return (
     <section className="meal-section">
       <header className="meal-header">
         <h3>{MEAL_LABELS[meal]}</h3>
-        <span className="meal-total">{total} kcal</span>
+        <span className="meal-total">
+          {total} kcal
+          {entries.length > 0 && (
+            <span className="meal-macros"> · P {macros.protein} · C {macros.carbs} · F {macros.fat}</span>
+          )}
+        </span>
       </header>
 
       {entries.length > 0 && (
@@ -35,6 +49,10 @@ export function MealSection(props: MealSectionProps) {
                 <span className="entry-serving">
                   {entry.food.servingSize * entry.quantity}
                   {entry.food.servingUnit}
+                  {hasMacros(entry.food) && (() => {
+                    const m = roundMacros(entryMacros(entry));
+                    return <span className="entry-macros"> · P {m.protein} · C {m.carbs} · F {m.fat}</span>;
+                  })()}
                 </span>
               </div>
               <div className="entry-controls">

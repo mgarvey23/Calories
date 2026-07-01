@@ -127,6 +127,20 @@ input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent)
 .progress-fill { height: 100%; background: var(--accent); transition: width 0.2s; }
 .progress-fill.over { background: var(--over); }
 
+.macro-bar {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.macro { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.macro strong { font-size: 0.95rem; color: var(--text); }
+.macro.protein strong { color: #3182ce; }
+.macro.carbs strong { color: #dd6b20; }
+.macro.fat strong { color: #805ad5; }
+.meal-macros, .entry-macros { color: var(--muted); font-weight: 400; }
+
 /* Meals ------------------------------------------------------------------- */
 .meal-section { padding: 0.85rem 1rem; }
 .meal-header { display: flex; justify-content: space-between; align-items: baseline; }
@@ -161,7 +175,10 @@ input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent)
 
 /* Food search ------------------------------------------------------------- */
 .food-search { margin-top: 0.5rem; position: relative; }
-.food-search > input { width: 100%; }
+.search-input-row { display: flex; gap: 0.5rem; }
+.search-input-row input { flex: 1; min-width: 0; }
+.scan-button { flex-shrink: 0; font-size: 1.1rem; padding: 0.35rem 0.6rem; }
+.result-macros { background: var(--bg); border-radius: 4px; padding: 0 0.35rem; }
 .search-status { font-size: 0.8rem; color: var(--muted); padding: 0.35rem 0; }
 .search-status.error, small.error { color: var(--over); }
 
@@ -233,3 +250,49 @@ input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent)
 .field > span { font-weight: 600; font-size: 0.9rem; }
 .field small { color: var(--muted); font-size: 0.75rem; }
 .backup-buttons { display: flex; gap: 0.5rem; }
+
+/* Barcode scanner --------------------------------------------------------- */
+.scanner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 10;
+}
+.scanner-panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1rem;
+  width: 100%;
+  max-width: 480px;
+}
+.scanner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+.scanner-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.scanner-video { width: 100%; height: 100%; object-fit: cover; }
+.scanner-reticle {
+  position: absolute;
+  top: 50%;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: var(--over);
+  box-shadow: 0 0 8px var(--over);
+}
+.scanner-error { padding: 1.5rem 0.5rem; text-align: center; color: var(--over); }
+.scanner-hint { text-align: center; color: var(--muted); font-size: 0.8rem; margin: 0.75rem 0 0; }

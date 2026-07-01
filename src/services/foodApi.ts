@@ -85,6 +85,45 @@ async function searchOpenFoodFacts(query: string, signal?: AbortSignal): Promise
   return results;
 }
 
+const OFF_PRODUCT_URL = 'https://world.openfoodfacts.org/api/v2/product';
+
+/**
+ * Look up a single product by its barcode (EAN/UPC) on Open Food Facts.
+ * Returns null when the barcode isn't in the database or has no calorie data.
+ */
+export async function fetchProductByBarcode(
+  barcode: string,
+  signal?: AbortSignal,
+): Promise<FoodSearchResult | null> {
+  const params = new URLSearchParams({
+    fields: 'code,product_name,brands,nutriments',
+  });
+  const res = await fetch(`${OFF_PRODUCT_URL}/${encodeURIComponent(barcode)}.json?${params}`, {
+    signal,
+  });
+  if (!res.ok) throw new Error(`Open Food Facts error ${res.status}`);
+  const data = (await res.json()) as { status?: number; product?: OffProduct };
+  if (data.status !== 1 || !data.product) return null;
+
+  const p = data.product;
+  const name = p.product_name?.trim();
+  const kcal = num(p.nutriments?.['energy-kcal_100g']);
+  if (!name || kcal === undefined) return null;
+
+  return {
+    name,
+    brand: p.brands?.split(',')[0]?.trim() || undefined,
+    source: 'off',
+    sourceId: p.code ?? barcode,
+    servingSize: 100,
+    servingUnit: 'g',
+    calories: Math.round(kcal),
+    protein: num(p.nutriments?.['proteins_100g']),
+    carbs: num(p.nutriments?.['carbohydrates_100g']),
+    fat: num(p.nutriments?.['fat_100g']),
+  };
+}
+
 // --- USDA FoodData Central -------------------------------------------------
 
 const USDA_SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';

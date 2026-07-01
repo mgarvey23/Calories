@@ -79,9 +79,55 @@ export interface DiaryState {
 
 // --- Derived helpers -------------------------------------------------------
 
+/** Macronutrient totals in grams. */
+export interface Macros {
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export const ZERO_MACROS: Macros = { protein: 0, carbs: 0, fat: 0 };
+
 /** Calories contributed by a single entry (per-serving calories * quantity). */
 export function entryCalories(entry: MealEntry): number {
   return Math.round(entry.food.calories * entry.quantity);
+}
+
+/** Macros contributed by a single entry, scaled by quantity. */
+export function entryMacros(entry: MealEntry): Macros {
+  const { food, quantity } = entry;
+  return {
+    protein: (food.protein ?? 0) * quantity,
+    carbs: (food.carbs ?? 0) * quantity,
+    fat: (food.fat ?? 0) * quantity,
+  };
+}
+
+/** True if the food carries any macro data at all. */
+export function hasMacros(food: FoodItem): boolean {
+  return food.protein !== undefined || food.carbs !== undefined || food.fat !== undefined;
+}
+
+/** Sum macros across a list of entries. */
+export function entriesMacros(entries: MealEntry[]): Macros {
+  return entries.reduce<Macros>((acc, e) => {
+    const m = entryMacros(e);
+    return { protein: acc.protein + m.protein, carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat };
+  }, { ...ZERO_MACROS });
+}
+
+/** Sum macros across every meal in a day. */
+export function dayMacros(day: DayLog | undefined): Macros {
+  if (!day) return { ...ZERO_MACROS };
+  return MEAL_TYPES.reduce<Macros>((acc, m) => {
+    const mm = entriesMacros(day.meals[m]);
+    return { protein: acc.protein + mm.protein, carbs: acc.carbs + mm.carbs, fat: acc.fat + mm.fat };
+  }, { ...ZERO_MACROS });
+}
+
+/** Round each macro to the nearest gram, for display. */
+export function roundMacros(m: Macros): Macros {
+  return { protein: Math.round(m.protein), carbs: Math.round(m.carbs), fat: Math.round(m.fat) };
 }
 
 /** Total calories for a list of entries. */
