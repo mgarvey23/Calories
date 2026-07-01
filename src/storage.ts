@@ -1,0 +1,65 @@
+// ---------------------------------------------------------------------------
+// Persistence layer. The diary lives in localStorage so the app works with no
+// backend and no login. Export/import lets the user back up or move the data
+// between browsers/devices.
+// ---------------------------------------------------------------------------
+
+import type { DiaryState, Settings } from './types';
+
+const STORAGE_KEY = 'calorie-tracker:diary';
+const CURRENT_VERSION = 1;
+
+export const DEFAULT_SETTINGS: Settings = {
+  dailyCalorieGoal: 2000,
+  usdaApiKey: '',
+};
+
+export function defaultState(): DiaryState {
+  return { version: CURRENT_VERSION, settings: { ...DEFAULT_SETTINGS }, days: {} };
+}
+
+/** Load and validate the diary from localStorage, falling back to defaults. */
+export function loadState(): DiaryState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw) as Partial<DiaryState>;
+    return normalize(parsed);
+  } catch (err) {
+    console.warn('Failed to load diary, starting fresh:', err);
+    return defaultState();
+  }
+}
+
+/** Persist the diary to localStorage. */
+export function saveState(state: DiaryState): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (err) {
+    console.error('Failed to save diary:', err);
+  }
+}
+
+/** Coerce an arbitrary parsed object into a valid DiaryState. */
+function normalize(input: Partial<DiaryState>): DiaryState {
+  const base = defaultState();
+  return {
+    version: CURRENT_VERSION,
+    settings: { ...base.settings, ...(input.settings ?? {}) },
+    days: input.days ?? {},
+  };
+}
+
+/** Serialize the diary as a downloadable JSON string. */
+export function exportState(state: DiaryState): string {
+  return JSON.stringify(state, null, 2);
+}
+
+/** Parse an imported JSON string back into a DiaryState. Throws on bad input. */
+export function importState(json: string): DiaryState {
+  const parsed = JSON.parse(json) as Partial<DiaryState>;
+  if (typeof parsed !== 'object' || parsed === null || !('days' in parsed)) {
+    throw new Error('This file does not look like a calorie-tracker export.');
+  }
+  return normalize(parsed);
+}
