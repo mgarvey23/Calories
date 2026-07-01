@@ -179,6 +179,32 @@ input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent)
 .search-input-row input { flex: 1; min-width: 0; }
 .scan-button { flex-shrink: 0; font-size: 1.1rem; padding: 0.35rem 0.6rem; }
 .result-macros { background: var(--bg); border-radius: 4px; padding: 0 0.35rem; }
+
+.recent-foods { margin-top: 0.5rem; }
+.recent-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.recent-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.35rem; }
+.recent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  max-width: 100%;
+}
+.recent-chip:hover { border-color: var(--accent); color: var(--accent); }
+.recent-chip-cals {
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 0 0.35rem;
+}
 .search-status { font-size: 0.8rem; color: var(--muted); padding: 0.35rem 0; }
 .search-status.error, small.error { color: var(--over); }
 

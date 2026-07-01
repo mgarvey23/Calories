@@ -17,6 +17,8 @@ const BarcodeScanner = lazy(() =>
 interface FoodSearchProps {
   meal: MealType;
   usdaApiKey: string;
+  /** Recently-logged foods offered as one-tap quick-adds when the box is empty. */
+  recent: FoodItem[];
   onAdd: (food: FoodItem, quantity: number) => void;
 }
 
@@ -31,7 +33,7 @@ const SOURCE_LABELS: Record<FoodSearchResult['source'], string> = {
  * calories are computed automatically from its label data; the user only sets
  * how many servings they ate.
  */
-export function FoodSearch({ meal, usdaApiKey, onAdd }: FoodSearchProps) {
+export function FoodSearch({ meal, usdaApiKey, recent, onAdd }: FoodSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -72,6 +74,13 @@ export function FoodSearch({ meal, usdaApiKey, onAdd }: FoodSearchProps) {
     setQuery('');
     setResults([]);
   }
+
+  // Re-log a previous food. Clone with a fresh id so entries stay independent.
+  function handleQuickAdd(food: FoodItem) {
+    onAdd({ ...food, id: crypto.randomUUID() }, 1);
+  }
+
+  const showRecent = query.trim().length < 2 && results.length === 0 && recent.length > 0;
 
   async function handleBarcode(barcode: string) {
     setScannerOpen(false);
@@ -114,6 +123,26 @@ export function FoodSearch({ meal, usdaApiKey, onAdd }: FoodSearchProps) {
       </div>
       {loading && <div className="search-status">Searching…</div>}
       {error && <div className="search-status error">{error}</div>}
+
+      {showRecent && (
+        <div className="recent-foods">
+          <span className="recent-label">Recent</span>
+          <div className="recent-chips">
+            {recent.map((food) => (
+              <button
+                key={food.id}
+                type="button"
+                className="recent-chip"
+                onClick={() => handleQuickAdd(food)}
+                title={`Add ${food.name} (${food.calories} kcal)`}
+              >
+                {food.name}
+                <span className="recent-chip-cals">{food.calories}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {results.length > 0 && (
         <ul className="search-results">

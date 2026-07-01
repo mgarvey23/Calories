@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import type { DiaryState, FoodItem, MealType } from '../types';
 import { MEAL_TYPES, dayCalories, dayMacros, emptyDay, roundMacros } from '../types';
 import { formatLongDate } from '../dateUtils';
+import { recentFoods } from '../foodHistory';
 import { MealSection } from './MealSection';
 
 interface DayViewProps {
@@ -19,6 +21,7 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange }: DayV
   const goal = state.settings.dailyCalorieGoal;
   const remaining = goal - total;
   const pct = goal > 0 ? Math.min(100, Math.round((total / goal) * 100)) : 0;
+  const recent = useMemo(() => recentFoods(state), [state.days]);
 
   return (
     <div className="day-view">
@@ -52,6 +55,7 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange }: DayV
           meal={meal}
           entries={day.meals[meal]}
           usdaApiKey={state.settings.usdaApiKey}
+          recent={recent}
           onAdd={(food, qty) => onAdd(meal, food, qty)}
           onRemove={(id) => onRemove(meal, id)}
           onQuantityChange={(id, qty) => onQuantityChange(meal, id, qty)}

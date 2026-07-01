@@ -23,6 +23,8 @@ login). Your data is stored locally and can be exported/imported for backup.
   (Requires HTTPS — works on the deployed site and on `localhost`.)
 - **Macro tracking** — protein, carbs and fat are shown per food, per meal and
   as daily totals alongside calories.
+- **Recent foods** — foods you've logged before appear as one-tap quick-add
+  chips, so repeat meals don't need re-searching.
 - **Manual entry fallback** — add a food (with optional macros) by hand when it
   isn't found.
 - **Per-serving quantities** — set how many servings you ate; calories and

@@ -14,6 +14,7 @@ interface MealSectionProps {
   meal: MealType;
   entries: MealEntry[];
   usdaApiKey: string;
+  recent: FoodItem[];
   onAdd: (food: FoodItem, quantity: number) => void;
   onRemove: (entryId: string) => void;
   onQuantityChange: (entryId: string, quantity: number) => void;
@@ -21,7 +22,7 @@ interface MealSectionProps {
 
 /** One meal bucket for the selected day: its entries plus a search box. */
 export function MealSection(props: MealSectionProps) {
-  const { meal, entries, usdaApiKey, onAdd, onRemove, onQuantityChange } = props;
+  const { meal, entries, usdaApiKey, recent, onAdd, onRemove, onQuantityChange } = props;
   const total = entriesCalories(entries);
   const macros = roundMacros(entriesMacros(entries));
 
@@ -82,7 +83,7 @@ export function MealSection(props: MealSectionProps) {
         </ul>
       )}
 
-      <FoodSearch meal={meal} usdaApiKey={usdaApiKey} onAdd={onAdd} />
+      <FoodSearch meal={meal} usdaApiKey={usdaApiKey} recent={recent} onAdd={onAdd} />
     </section>
   );
 }
