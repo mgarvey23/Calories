@@ -22,8 +22,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
+      # Configures Pages and enables it for the repo if it isn't already, so the
+      # deploy step doesn't 404 on first run.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - run: npm ci
       # BASE_PATH must match the repo name so asset URLs resolve on Pages.
       # Firebase config is injected from repository secrets at build time.
