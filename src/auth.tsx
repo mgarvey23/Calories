@@ -53,7 +53,7 @@ function messageFor(code: string | undefined): string {
     case 'auth/operation-not-allowed':
     case 'auth/admin-restricted-operation':
     case 'auth/configuration-not-found':
-      return 'Username/password sign-in is not enabled yet. Enable Email/Password in Firebase → Authentication → Sign-in method.';
+      return 'Accounts are not turned on yet. In Firebase → Authentication → Sign-in method, enable the provider named "Email/Password" — it powers username + password logins and never asks for an email.';
     case 'auth/network-request-failed':
       return 'Network error. Check your connection and try again.';
     default:
