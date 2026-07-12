@@ -34,20 +34,29 @@ export function subscribeDiary(
   uid: string,
   onData: (state: DiaryState) => void,
   onMissing: () => void,
+  onError?: (err: Error) => void,
 ): Unsubscribe {
-  return onSnapshot(userDoc(uid), { includeMetadataChanges: true }, (snap) => {
-    // Skip echoes of our own not-yet-acknowledged writes so they don't clobber
-    // the optimistic local state.
-    if (snap.metadata.hasPendingWrites) return;
+  return onSnapshot(
+    userDoc(uid),
+    { includeMetadataChanges: true },
+    (snap) => {
+      // Skip echoes of our own not-yet-acknowledged writes so they don't clobber
+      // the optimistic local state.
+      if (snap.metadata.hasPendingWrites) return;
 
-    if (snap.exists()) {
-      onData(normalize(snap.data() as Partial<DiaryState>));
-    } else if (!snap.metadata.fromCache) {
-      // Only seed a new document once the server has confirmed none exists,
-      // to avoid overwriting server data during an offline-first load.
-      onMissing();
-    }
-  });
+      if (snap.exists()) {
+        onData(normalize(snap.data() as Partial<DiaryState>));
+      } else if (!snap.metadata.fromCache) {
+        // Only seed a new document once the server has confirmed none exists,
+        // to avoid overwriting server data during an offline-first load.
+        onMissing();
+      }
+    },
+    (err) => {
+      console.error('Diary subscription error:', err);
+      onError?.(err);
+    },
+  );
 }
 
 /** Overwrite a user's diary document. */
