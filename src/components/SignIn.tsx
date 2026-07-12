@@ -5,7 +5,7 @@ import { isFirebaseConfigured } from '../firebase';
  * Landing screen shown when signed out. If Firebase config is missing it shows
  * setup instructions instead of a broken sign-in button.
  */
-export function SignIn() {
+export function SignIn({ onUseLocal }: { onUseLocal: () => void }) {
   const { signIn, error } = useAuth();
 
   return (
@@ -23,7 +23,8 @@ export function SignIn() {
           </>
         ) : (
           <div className="setup-notice">
-            <p><strong>Almost there — Firebase isn't configured yet.</strong></p>
+            <p><strong>Firebase isn't configured yet.</strong> You can still use the
+            app locally now, and set up sign-in later.</p>
             <ol>
               <li>Create a project at <code>console.firebase.google.com</code>.</li>
               <li>Add a <strong>Web app</strong> and copy its config values.</li>
@@ -37,6 +38,14 @@ export function SignIn() {
             <p className="setup-hint">Full steps are in the README.</p>
           </div>
         )}
+
+        <button className="local-button" onClick={onUseLocal}>
+          Continue without signing in
+        </button>
+        <p className="setup-hint">
+          Local mode keeps your diary on this device only. You can sign in later to
+          sync it.
+        </p>
       </div>
     </div>
   );

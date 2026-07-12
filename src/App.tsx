@@ -1,43 +1,89 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useAuth } from './auth';
+import { isFirebaseConfigured } from './firebase';
 import { useFirebaseDiary } from './hooks/useFirebaseDiary';
+import { useLocalDiary } from './hooks/useLocalDiary';
 import { Calendar } from './components/Calendar';
 import { DayView } from './components/DayView';
 import { SettingsPanel } from './components/SettingsPanel';
 import { SignIn } from './components/SignIn';
 import { todayISO } from './dateUtils';
-import type { FoodItem, MealEntry, MealType } from './types';
+import type { DiaryApi, FoodItem, MealEntry, MealType } from './types';
+
+const LOCAL_MODE_KEY = 'calorie-tracker:local-mode';
 
 export default function App() {
   const { user, loading, signOutUser } = useAuth();
+  const [localMode, setLocalMode] = useState(
+    () => localStorage.getItem(LOCAL_MODE_KEY) === '1',
+  );
+
+  function enableLocalMode() {
+    localStorage.setItem(LOCAL_MODE_KEY, '1');
+    setLocalMode(true);
+  }
+  function exitLocalMode() {
+    localStorage.removeItem(LOCAL_MODE_KEY);
+    setLocalMode(false);
+  }
 
   if (loading) {
     return <div className="app-loading">Loading…</div>;
   }
-  if (!user) {
-    return <SignIn />;
+  if (user) {
+    return (
+      <CloudTracker uid={user.uid} label={user.email ?? 'Account'} onSignOut={signOutUser} />
+    );
   }
-  return <Tracker userLabel={user.email ?? 'Account'} onSignOut={signOutUser} uid={user.uid} />;
+  if (localMode) {
+    return <LocalTracker onSignIn={isFirebaseConfigured ? exitLocalMode : undefined} />;
+  }
+  return <SignIn onUseLocal={enableLocalMode} />;
 }
 
-interface TrackerProps {
-  uid: string;
-  userLabel: string;
-  onSignOut: () => void;
-}
-
-function Tracker({ uid, userLabel, onSignOut }: TrackerProps) {
+/** Cloud-synced path: waits for the Firestore subscription, then renders. */
+function CloudTracker({ uid, label, onSignOut }: { uid: string; label: string; onSignOut: () => void }) {
   const diary = useFirebaseDiary(uid);
+  if (!diary.state) {
+    return <div className="app-loading">Syncing your diary…</div>;
+  }
+  return (
+    <TrackerView
+      diary={diary as DiaryApi}
+      headerExtra={
+        <>
+          <span className="user-label" title={label}>{label}</span>
+          <button onClick={onSignOut}>Sign out</button>
+        </>
+      }
+    />
+  );
+}
+
+/** Local-only path: on-device storage, no account required. */
+function LocalTracker({ onSignIn }: { onSignIn?: () => void }) {
+  const diary = useLocalDiary();
+  return (
+    <TrackerView
+      diary={diary}
+      headerExtra={
+        <>
+          <span className="user-label">Local mode</span>
+          {onSignIn && <button onClick={onSignIn}>Sign in to sync</button>}
+        </>
+      }
+    />
+  );
+}
+
+/** The main tracker UI, backend-agnostic (works with either diary hook). */
+function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: ReactNode }) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   function handleAdd(meal: MealType, food: FoodItem, quantity: number) {
     const entry: MealEntry = { id: crypto.randomUUID(), food, quantity };
     diary.addEntry(selectedDate, meal, entry);
-  }
-
-  if (!diary.state) {
-    return <div className="app-loading">Syncing your diary…</div>;
   }
 
   return (
@@ -47,8 +93,7 @@ function Tracker({ uid, userLabel, onSignOut }: TrackerProps) {
         <div className="header-actions">
           <button onClick={() => setSelectedDate(todayISO())}>Today</button>
           <button onClick={() => setSettingsOpen(true)}>Settings</button>
-          <span className="user-label" title={userLabel}>{userLabel}</span>
-          <button onClick={onSignOut}>Sign out</button>
+          {headerExtra}
         </div>
       </header>
 
