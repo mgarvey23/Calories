@@ -76,7 +76,9 @@ export function SignIn({ onUseLocal }: { onUseLocal: () => void }) {
             <ol>
               <li>Create a project at <code>console.firebase.google.com</code>.</li>
               <li>Add a <strong>Web app</strong> and copy its config values.</li>
-              <li>Enable <strong>Authentication → Email/Password</strong>.</li>
+              <li>Enable <strong>Authentication</strong> → turn on the provider named
+                <strong> "Email/Password"</strong> (it powers username + password —
+                no email is required).</li>
               <li>Create a <strong>Firestore database</strong>.</li>
               <li>
                 Put the config in <code>.env</code> (see <code>.env.example</code>)
