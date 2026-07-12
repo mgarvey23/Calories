@@ -4,8 +4,9 @@
 // Two free data sources are queried directly from the browser:
 //   - Open Food Facts: real packaged products with brands, barcodes and label
 //     nutrition. Best for branded/scanned items. No API key required.
-//   - USDA FoodData Central: generic/whole foods (e.g. "banana"). Requires an
-//     API key; falls back to the shared, rate-limited DEMO_KEY.
+//   - USDA FoodData Central: generic/whole foods (e.g. "egg", "banana") plus a
+//     large US branded database. Uses a key from settings or the optional
+//     VITE_USDA_API_KEY build var, falling back to the shared DEMO_KEY.
 //
 // Both are normalized into a common FoodSearchResult shape so the UI does not
 // care where a result came from.
@@ -32,9 +33,21 @@ export function toFoodItem(result: FoodSearchResult): FoodItem {
   return { id: crypto.randomUUID(), ...result };
 }
 
+/** Resolve the USDA API key: explicit setting > build-time var > shared demo. */
+function usdaKey(apiKey?: string): string {
+  return apiKey?.trim() || import.meta.env.VITE_USDA_API_KEY || 'DEMO_KEY';
+}
+
+function num(v: number | string | undefined): number | undefined {
+  if (v === undefined || v === '') return undefined;
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 // --- Open Food Facts -------------------------------------------------------
 
 const OFF_SEARCH_URL = 'https://world.openfoodfacts.org/cgi/search.pl';
+const OFF_PRODUCT_URL = 'https://world.openfoodfacts.org/api/v2/product';
 
 interface OffProduct {
   code?: string;
@@ -43,10 +56,39 @@ interface OffProduct {
   nutriments?: Record<string, number | string | undefined>;
 }
 
-function num(v: number | string | undefined): number | undefined {
-  if (v === undefined || v === '') return undefined;
-  const n = typeof v === 'number' ? v : parseFloat(v);
-  return Number.isFinite(n) ? n : undefined;
+/**
+ * Pull calories per 100 g from an Open Food Facts nutriments object, tolerating
+ * the several ways energy is recorded (kcal directly, or kJ that we convert).
+ */
+function offKcalPer100g(n: OffProduct['nutriments']): number | undefined {
+  const kcal = num(n?.['energy-kcal_100g']);
+  if (kcal !== undefined) return kcal;
+  const kj = num(n?.['energy-kj_100g']);
+  if (kj !== undefined) return kj / 4.184;
+  // energy_100g is usually kJ, but honour an explicit kcal unit.
+  const energy = num(n?.['energy_100g']);
+  if (energy !== undefined) {
+    return n?.['energy_unit'] === 'kcal' ? energy : energy / 4.184;
+  }
+  return undefined;
+}
+
+function offProductToResult(p: OffProduct, fallbackCode?: string): FoodSearchResult | null {
+  const name = p.product_name?.trim();
+  const kcal = offKcalPer100g(p.nutriments);
+  if (!name || kcal === undefined) return null;
+  return {
+    name,
+    brand: p.brands?.split(',')[0]?.trim() || undefined,
+    source: 'off',
+    sourceId: p.code ?? fallbackCode,
+    servingSize: 100,
+    servingUnit: 'g',
+    calories: Math.round(kcal),
+    protein: num(p.nutriments?.['proteins_100g']),
+    carbs: num(p.nutriments?.['carbohydrates_100g']),
+    fat: num(p.nutriments?.['fat_100g']),
+  };
 }
 
 async function searchOpenFoodFacts(query: string, signal?: AbortSignal): Promise<FoodSearchResult[]> {
@@ -61,67 +103,23 @@ async function searchOpenFoodFacts(query: string, signal?: AbortSignal): Promise
   const res = await fetch(`${OFF_SEARCH_URL}?${params}`, { signal });
   if (!res.ok) throw new Error(`Open Food Facts error ${res.status}`);
   const data = (await res.json()) as { products?: OffProduct[] };
-  const products = data.products ?? [];
-
   const results: FoodSearchResult[] = [];
-  for (const p of products) {
-    const name = p.product_name?.trim();
-    const kcal = num(p.nutriments?.['energy-kcal_100g']);
-    // Skip products with no name or no usable calorie value.
-    if (!name || kcal === undefined) continue;
-    results.push({
-      name,
-      brand: p.brands?.split(',')[0]?.trim() || undefined,
-      source: 'off',
-      sourceId: p.code,
-      servingSize: 100,
-      servingUnit: 'g',
-      calories: Math.round(kcal),
-      protein: num(p.nutriments?.['proteins_100g']),
-      carbs: num(p.nutriments?.['carbohydrates_100g']),
-      fat: num(p.nutriments?.['fat_100g']),
-    });
+  for (const p of data.products ?? []) {
+    const r = offProductToResult(p);
+    if (r) results.push(r);
   }
   return results;
 }
 
-const OFF_PRODUCT_URL = 'https://world.openfoodfacts.org/api/v2/product';
-
-/**
- * Look up a single product by its barcode (EAN/UPC) on Open Food Facts.
- * Returns null when the barcode isn't in the database or has no calorie data.
- */
-export async function fetchProductByBarcode(
-  barcode: string,
-  signal?: AbortSignal,
-): Promise<FoodSearchResult | null> {
-  const params = new URLSearchParams({
-    fields: 'code,product_name,brands,nutriments',
-  });
+async function offByBarcode(barcode: string, signal?: AbortSignal): Promise<FoodSearchResult | null> {
+  const params = new URLSearchParams({ fields: 'code,product_name,brands,nutriments' });
   const res = await fetch(`${OFF_PRODUCT_URL}/${encodeURIComponent(barcode)}.json?${params}`, {
     signal,
   });
   if (!res.ok) throw new Error(`Open Food Facts error ${res.status}`);
   const data = (await res.json()) as { status?: number; product?: OffProduct };
   if (data.status !== 1 || !data.product) return null;
-
-  const p = data.product;
-  const name = p.product_name?.trim();
-  const kcal = num(p.nutriments?.['energy-kcal_100g']);
-  if (!name || kcal === undefined) return null;
-
-  return {
-    name,
-    brand: p.brands?.split(',')[0]?.trim() || undefined,
-    source: 'off',
-    sourceId: p.code ?? barcode,
-    servingSize: 100,
-    servingUnit: 'g',
-    calories: Math.round(kcal),
-    protein: num(p.nutriments?.['proteins_100g']),
-    carbs: num(p.nutriments?.['carbohydrates_100g']),
-    fat: num(p.nutriments?.['fat_100g']),
-  };
+  return offProductToResult(data.product, barcode);
 }
 
 // --- USDA FoodData Central -------------------------------------------------
@@ -130,7 +128,6 @@ const USDA_SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
 
 interface UsdaNutrient {
   nutrientName?: string;
-  unitName?: string;
   value?: number;
 }
 
@@ -138,6 +135,7 @@ interface UsdaFood {
   fdcId?: number;
   description?: string;
   brandOwner?: string;
+  gtinUpc?: string;
   foodNutrients?: UsdaNutrient[];
 }
 
@@ -146,58 +144,117 @@ function findNutrient(nutrients: UsdaNutrient[] | undefined, name: string): numb
   return match?.value;
 }
 
-async function searchUsda(
-  query: string,
-  apiKey: string,
-  signal?: AbortSignal,
-): Promise<FoodSearchResult[]> {
+function usdaFoodToResult(f: UsdaFood): FoodSearchResult | null {
+  const name = f.description?.trim();
+  const kcal = findNutrient(f.foodNutrients, 'energy');
+  if (!name || kcal === undefined) return null;
+  return {
+    // USDA descriptions are ALL CAPS for branded items; tidy generic ones read fine.
+    name,
+    brand: f.brandOwner?.trim() || undefined,
+    source: 'usda',
+    sourceId: f.fdcId !== undefined ? String(f.fdcId) : undefined,
+    servingSize: 100,
+    servingUnit: 'g',
+    calories: Math.round(kcal),
+    protein: findNutrient(f.foodNutrients, 'protein'),
+    carbs: findNutrient(f.foodNutrients, 'carbohydrate'),
+    fat: findNutrient(f.foodNutrients, 'total lipid'),
+  };
+}
+
+async function usdaSearch(query: string, apiKey: string | undefined, signal?: AbortSignal): Promise<UsdaFood[]> {
   const params = new URLSearchParams({
     query,
-    pageSize: '20',
-    api_key: apiKey || 'DEMO_KEY',
+    pageSize: '25',
+    api_key: usdaKey(apiKey),
   });
   const res = await fetch(`${USDA_SEARCH_URL}?${params}`, { signal });
   if (!res.ok) throw new Error(`USDA error ${res.status}`);
   const data = (await res.json()) as { foods?: UsdaFood[] };
-  const foods = data.foods ?? [];
+  return data.foods ?? [];
+}
 
+async function searchUsda(query: string, apiKey: string | undefined, signal?: AbortSignal): Promise<FoodSearchResult[]> {
+  const foods = await usdaSearch(query, apiKey, signal);
   const results: FoodSearchResult[] = [];
   for (const f of foods) {
-    const name = f.description?.trim();
-    const kcal = findNutrient(f.foodNutrients, 'energy');
-    if (!name || kcal === undefined) continue;
-    // USDA nutrients are reported per 100 g.
-    results.push({
-      name,
-      brand: f.brandOwner?.trim() || undefined,
-      source: 'usda',
-      sourceId: f.fdcId !== undefined ? String(f.fdcId) : undefined,
-      servingSize: 100,
-      servingUnit: 'g',
-      calories: Math.round(kcal),
-      protein: findNutrient(f.foodNutrients, 'protein'),
-      carbs: findNutrient(f.foodNutrients, 'carbohydrate'),
-      fat: findNutrient(f.foodNutrients, 'total lipid'),
-    });
+    const r = usdaFoodToResult(f);
+    if (r) results.push(r);
   }
   return results;
 }
 
-// --- Combined search -------------------------------------------------------
+/** Find a USDA branded food by its barcode/GTIN (US products often live here). */
+async function usdaByUpc(barcode: string, apiKey: string | undefined, signal?: AbortSignal): Promise<FoodSearchResult | null> {
+  const foods = await usdaSearch(barcode, apiKey, signal);
+  const normalized = barcode.replace(/^0+/, '');
+  const exact = foods.find((f) => f.gtinUpc && f.gtinUpc.replace(/^0+/, '') === normalized);
+  return usdaFoodToResult(exact ?? foods[0]) ?? null;
+}
+
+// --- Barcode lookup (combines both sources) --------------------------------
+
+export interface BarcodeOptions {
+  usdaApiKey?: string;
+  signal?: AbortSignal;
+}
+
+/**
+ * Look up a scanned barcode. Tries Open Food Facts (including a UPC-A → EAN-13
+ * zero-pad retry), then falls back to the USDA branded database. Returns null
+ * only when neither source has the product.
+ */
+export async function fetchProductByBarcode(
+  barcode: string,
+  { usdaApiKey, signal }: BarcodeOptions = {},
+): Promise<FoodSearchResult | null> {
+  const code = barcode.trim();
+
+  // 1. Open Food Facts by exact code.
+  try {
+    const off = await offByBarcode(code, signal);
+    if (off) return off;
+    // 12-digit UPC-A is stored in OFF as a zero-padded 13-digit EAN-13.
+    if (code.length === 12) {
+      const padded = await offByBarcode(`0${code}`, signal);
+      if (padded) return padded;
+    }
+  } catch (err) {
+    console.warn('Open Food Facts barcode lookup failed:', err);
+  }
+
+  // 2. USDA branded database by GTIN/UPC.
+  try {
+    return await usdaByUpc(code, usdaApiKey, signal);
+  } catch (err) {
+    console.warn('USDA barcode lookup failed:', err);
+    return null;
+  }
+}
+
+// --- Combined text search --------------------------------------------------
 
 export interface SearchOptions {
   usdaApiKey?: string;
   signal?: AbortSignal;
 }
 
+/** Rank generic whole-foods first, then branded packaged products. */
+function rankOf(r: FoodSearchResult): number {
+  if (r.source === 'usda' && !r.brand) return 0; // generic USDA (egg, banana…)
+  if (r.source === 'off') return 1; // branded, with label data
+  return 2; // USDA branded
+}
+
 /**
- * Search both sources in parallel and merge. If one source fails (network,
- * rate limit) the other's results are still returned rather than failing the
- * whole search.
+ * Search both sources in parallel and merge, floating generic whole-foods to
+ * the top so typing "egg" surfaces "Egg, whole, raw" (with macros) first. If
+ * one source fails (network, rate limit) the other's results are still shown.
  */
 export async function searchFoods(
   query: string,
-  { usdaApiKey = '', signal }: SearchOptions = {},
+  { usdaApiKey, signal }: SearchOptions = {},
 ): Promise<FoodSearchResult[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
@@ -213,5 +270,6 @@ export async function searchFoods(
   if (usda.status === 'fulfilled') results.push(...usda.value);
   else console.warn('USDA search failed:', usda.reason);
 
-  return results;
+  // Stable sort keeps each source's relevance order within a rank tier.
+  return results.map((r, i) => ({ r, i })).sort((a, b) => rankOf(a.r) - rankOf(b.r) || a.i - b.i).map((x) => x.r);
 }
