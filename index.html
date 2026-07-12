@@ -4,7 +4,47 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Calendar-based calorie tracker with real product nutrition lookup." />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <title>Calorie Tracker</title>
+    <script>
+      // Self-heal a stale, cached index.html that points at asset filenames a
+      // newer deploy has replaced (the classic post-deploy white screen). If a
+      // script/style fails to load, or the app never mounts, reload once from a
+      // fresh URL so the browser fetches the current index and assets.
+      (function () {
+        function reloadFresh(flag) {
+          try {
+            if (sessionStorage.getItem(flag)) return;
+            sessionStorage.setItem(flag, '1');
+          } catch (e) {}
+          location.replace(location.pathname + '?r=' + Date.now());
+        }
+        window.addEventListener(
+          'error',
+          function (e) {
+            var t = e && e.target;
+            if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) {
+              reloadFresh('cc_reload_asset');
+            }
+          },
+          true,
+        );
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            var root = document.getElementById('root');
+            if (root && root.childElementCount === 0) {
+              reloadFresh('cc_reload_empty');
+            } else {
+              // Mounted fine — clear flags so future genuine reloads work.
+              try {
+                sessionStorage.removeItem('cc_reload_asset');
+                sessionStorage.removeItem('cc_reload_empty');
+              } catch (e) {}
+            }
+          }, 6000);
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
