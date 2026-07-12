@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DiaryState, MealEntry, MealType, Settings } from '../types';
+import type { DiaryState, FoodItem, MealEntry, MealType, Recipe, Settings } from '../types';
 import {
   addEntryOp,
+  deleteRecipeOp,
   removeEntryOp,
+  saveRecipeOp,
+  toggleFavoriteOp,
   updateEntryQuantityOp,
   updateSettingsOp,
 } from '../diaryOps';
@@ -82,6 +85,25 @@ export function useFirebaseDiary(uid: string) {
     [mutate],
   );
   const replaceState = useCallback((next: DiaryState) => mutate(() => next), [mutate]);
+  const toggleFavorite = useCallback(
+    (food: FoodItem) => mutate((s) => toggleFavoriteOp(s, food)),
+    [mutate],
+  );
+  const saveRecipe = useCallback((recipe: Recipe) => mutate((s) => saveRecipeOp(s, recipe)), [mutate]);
+  const deleteRecipe = useCallback(
+    (recipeId: string) => mutate((s) => deleteRecipeOp(s, recipeId)),
+    [mutate],
+  );
 
-  return { state, addEntry, removeEntry, updateEntryQuantity, updateSettings, replaceState };
+  return {
+    state,
+    addEntry,
+    removeEntry,
+    updateEntryQuantity,
+    updateSettings,
+    replaceState,
+    toggleFavorite,
+    saveRecipe,
+    deleteRecipe,
+  };
 }

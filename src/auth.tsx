@@ -1,22 +1,59 @@
-// Authentication context: exposes the current Google-signed-in user and
-// sign-in / sign-out actions to the rest of the app.
+// Authentication context: simple username + password accounts (Firebase
+// Email/Password under the hood). Usernames are mapped to a synthetic email so
+// users never have to enter a real one. Sessions persist, so users stay signed
+// in until they sign out.
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
-import { auth, googleProvider, isFirebaseConfigured } from './firebase';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  type User,
+} from 'firebase/auth';
+import { auth, isFirebaseConfigured } from './firebase';
+
+// Synthetic email domain so a username becomes a valid Firebase login.
+const EMAIL_DOMAIN = 'users.calorietracker.app';
+
+/** Normalize a username and turn it into the synthetic login email. */
+function usernameToEmail(username: string): string {
+  const clean = username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+  return `${clean}@${EMAIL_DOMAIN}`;
+}
+
+/** Recover the display username from a signed-in user's synthetic email. */
+export function usernameFromUser(user: User): string {
+  return user.email?.split('@')[0] ?? 'Account';
+}
 
 interface AuthContextValue {
-  /** The signed-in user, or null when signed out. */
   user: User | null;
-  /** True until the initial auth state has been resolved. */
   loading: boolean;
-  /** Last sign-in error message, if any. */
   error: string | null;
-  signIn: () => Promise<void>;
+  signIn: (username: string, password: string) => Promise<void>;
+  signUp: (username: string, password: string) => Promise<void>;
   signOutUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+function messageFor(code: string | undefined): string {
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Incorrect username or password.';
+    case 'auth/email-already-in-use':
+      return 'That username is already taken.';
+    case 'auth/weak-password':
+      return 'Password must be at least 6 characters.';
+    case 'auth/invalid-email':
+      return 'Please choose a username with letters or numbers.';
+    default:
+      return 'Something went wrong. Please try again.';
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -34,15 +71,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  async function signIn() {
+  async function signIn(username: string, password: string) {
     if (!auth) return;
     setError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithEmailAndPassword(auth, usernameToEmail(username), password);
     } catch (err) {
-      const code = (err as { code?: string }).code;
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
-      setError('Sign-in failed. Please try again.');
+      setError(messageFor((err as { code?: string }).code));
+      throw err;
+    }
+  }
+
+  async function signUp(username: string, password: string) {
+    if (!auth) return;
+    setError(null);
+    try {
+      await createUserWithEmailAndPassword(auth, usernameToEmail(username), password);
+    } catch (err) {
+      setError(messageFor((err as { code?: string }).code));
+      throw err;
     }
   }
 
@@ -51,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signOut(auth);
   }
 
-  const value: AuthContextValue = { user, loading, error, signIn, signOutUser };
+  const value: AuthContextValue = { user, loading, error, signIn, signUp, signOutUser };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

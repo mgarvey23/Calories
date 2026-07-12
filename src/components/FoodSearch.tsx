@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import type { FoodItem, MealType } from '../types';
-import { MEAL_LABELS } from '../types';
+import type { FoodItem, JordanPriority, MealType, Recipe } from '../types';
+import { MEAL_LABELS, isFavorite, recipeServingFood } from '../types';
 import {
   fetchProductByBarcode,
   searchFoods,
   toFoodItem,
   type FoodSearchResult,
+  type ScannedProduct,
 } from '../services/foodApi';
+import { ProductAnalysis } from './ProductAnalysis';
 
 // The barcode scanner pulls in a heavy decoding library; load it on demand so
 // it stays out of the initial bundle until the user taps "scan".
@@ -17,25 +19,33 @@ const BarcodeScanner = lazy(() =>
 interface FoodSearchProps {
   meal: MealType;
   usdaApiKey: string;
+  jordanPriority: JordanPriority;
   /** Recently-logged foods offered as one-tap quick-adds when the box is empty. */
   recent: FoodItem[];
+  favorites: FoodItem[];
+  recipes: Recipe[];
   onAdd: (food: FoodItem, quantity: number) => void;
+  onToggleFavorite: (food: FoodItem) => void;
 }
 
 const SOURCE_LABELS: Record<FoodSearchResult['source'], string> = {
   off: 'Open Food Facts',
   usda: 'USDA',
   manual: 'Manual',
+  recipe: 'Recipe',
 };
 
 /**
  * Type a food name, search the databases, pick a result. The chosen food's
  * calories are computed automatically from its label data; the user only sets
- * how many servings they ate.
+ * how many servings they ate. Also offers favorites/recipes/recent quick-adds
+ * and, for scanned products, a pros/cons analysis with Jordan's Suggestion.
  */
-export function FoodSearch({ meal, usdaApiKey, recent, onAdd }: FoodSearchProps) {
+export function FoodSearch(props: FoodSearchProps) {
+  const { meal, usdaApiKey, jordanPriority, recent, favorites, recipes, onAdd, onToggleFavorite } = props;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodSearchResult[]>([]);
+  const [scanned, setScanned] = useState<ScannedProduct | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
@@ -50,6 +60,7 @@ export function FoodSearch({ meal, usdaApiKey, recent, onAdd }: FoodSearchProps)
       setError(null);
       return;
     }
+    setScanned(null);
     const handle = setTimeout(async () => {
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -69,29 +80,37 @@ export function FoodSearch({ meal, usdaApiKey, recent, onAdd }: FoodSearchProps)
     return () => clearTimeout(handle);
   }, [query, usdaApiKey]);
 
-  function handlePick(result: FoodSearchResult) {
-    onAdd(toFoodItem(result), 1);
+  function clearSearch() {
     setQuery('');
     setResults([]);
+    setScanned(null);
   }
 
-  // Re-log a previous food. Clone with a fresh id so entries stay independent.
+  function handlePick(result: FoodSearchResult) {
+    onAdd(toFoodItem(result), 1);
+    clearSearch();
+  }
+
+  // Re-log a saved food. Clone with a fresh id so entries stay independent.
   function handleQuickAdd(food: FoodItem) {
     onAdd({ ...food, id: crypto.randomUUID() }, 1);
   }
 
-  const showRecent = query.trim().length < 2 && results.length === 0 && recent.length > 0;
+  const showQuickAdds =
+    query.trim().length < 2 && results.length === 0 && !scanned &&
+    (favorites.length > 0 || recipes.length > 0 || recent.length > 0);
 
   async function handleBarcode(barcode: string) {
     setScannerOpen(false);
     setLoading(true);
     setError(null);
     setResults([]);
+    setScanned(null);
     try {
       const product = await fetchProductByBarcode(barcode, { usdaApiKey });
       if (product) {
-        // Surface as a result so the user can confirm before logging.
         setResults([product]);
+        setScanned(product);
       } else {
         setError(`No product found for barcode ${barcode}. Try searching or add it manually.`);
       }
@@ -124,48 +143,81 @@ export function FoodSearch({ meal, usdaApiKey, recent, onAdd }: FoodSearchProps)
       {loading && <div className="search-status">Searching…</div>}
       {error && <div className="search-status error">{error}</div>}
 
-      {showRecent && (
-        <div className="recent-foods">
-          <span className="recent-label">Recent</span>
-          <div className="recent-chips">
-            {recent.map((food) => (
-              <button
-                key={food.id}
-                type="button"
-                className="recent-chip"
-                onClick={() => handleQuickAdd(food)}
-                title={`Add ${food.name} (${food.calories} kcal)`}
-              >
-                {food.name}
-                <span className="recent-chip-cals">{food.calories}</span>
-              </button>
-            ))}
-          </div>
+      {showQuickAdds && (
+        <div className="quick-adds">
+          {favorites.length > 0 && (
+            <ChipRow label="★ Favorites" foods={favorites} onPick={handleQuickAdd} />
+          )}
+          {recipes.length > 0 && (
+            <div className="chip-section">
+              <span className="chip-label">Recipes</span>
+              <div className="chip-row">
+                {recipes.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className="quick-chip recipe-chip"
+                    onClick={() => onAdd(recipeServingFood(r), 1)}
+                    title={`Add 1 serving of ${r.name}`}
+                  >
+                    {r.name}
+                    <span className="chip-cals">{recipeServingFood(r).calories}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {recent.length > 0 && (
+            <ChipRow label="Recent" foods={recent} onPick={handleQuickAdd} />
+          )}
         </div>
       )}
 
       {results.length > 0 && (
         <ul className="search-results">
-          {results.map((r, i) => (
-            <li key={`${r.source}-${r.sourceId ?? i}`}>
-              <button className="result" onClick={() => handlePick(r)}>
-                <span className="result-name">
-                  {r.name}
-                  {r.brand && <span className="result-brand"> · {r.brand}</span>}
-                </span>
-                <span className="result-meta">
-                  {r.calories} kcal / {r.servingSize}{r.servingUnit}
-                  {(r.protein !== undefined || r.carbs !== undefined || r.fat !== undefined) && (
-                    <span className="result-macros">
-                      P {Math.round(r.protein ?? 0)} · C {Math.round(r.carbs ?? 0)} · F {Math.round(r.fat ?? 0)}
-                    </span>
-                  )}
-                  <span className="result-source">{SOURCE_LABELS[r.source]}</span>
-                </span>
-              </button>
-            </li>
-          ))}
+          {results.map((r, i) => {
+            const fav = isFavorite(favorites, toFoodItem(r));
+            return (
+              <li key={`${r.source}-${r.sourceId ?? i}`} className="result-row">
+                <button className="result" onClick={() => handlePick(r)}>
+                  <span className="result-name">
+                    {r.name}
+                    {r.brand && <span className="result-brand"> · {r.brand}</span>}
+                  </span>
+                  <span className="result-meta">
+                    {r.calories} kcal / {r.servingSize}{r.servingUnit}
+                    {(r.protein !== undefined || r.carbs !== undefined || r.fat !== undefined) && (
+                      <span className="result-macros">
+                        P {Math.round(r.protein ?? 0)} · C {Math.round(r.carbs ?? 0)} · F {Math.round(r.fat ?? 0)}
+                      </span>
+                    )}
+                    <span className="result-source">{SOURCE_LABELS[r.source]}</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`star-button ${fav ? 'active' : ''}`}
+                  onClick={() => onToggleFavorite(toFoodItem(r))}
+                  title={fav ? 'Remove from favorites' : 'Save to favorites'}
+                  aria-label="Toggle favorite"
+                >
+                  {fav ? '★' : '☆'}
+                </button>
+              </li>
+            );
+          })}
         </ul>
+      )}
+
+      {scanned && (
+        <ProductAnalysis
+          product={scanned}
+          priority={jordanPriority}
+          onAddAlternative={(food) => {
+            onAdd(food, 1);
+            clearSearch();
+          }}
+        />
       )}
 
       <button className="link-button" onClick={() => setManualOpen((o) => !o)}>
@@ -189,6 +241,37 @@ export function FoodSearch({ meal, usdaApiKey, recent, onAdd }: FoodSearchProps)
           />
         </Suspense>
       )}
+    </div>
+  );
+}
+
+/** A labelled row of one-tap food chips (favorites / recent). */
+function ChipRow({
+  label,
+  foods,
+  onPick,
+}: {
+  label: string;
+  foods: FoodItem[];
+  onPick: (food: FoodItem) => void;
+}) {
+  return (
+    <div className="chip-section">
+      <span className="chip-label">{label}</span>
+      <div className="chip-row">
+        {foods.map((food) => (
+          <button
+            key={food.id}
+            type="button"
+            className="quick-chip"
+            onClick={() => onPick(food)}
+            title={`Add ${food.name} (${food.calories} kcal)`}
+          >
+            {food.name}
+            <span className="chip-cals">{food.calories}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

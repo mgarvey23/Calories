@@ -1,4 +1,4 @@
-import type { FoodItem, MealEntry, MealType } from '../types';
+import type { FoodItem, JordanPriority, MealEntry, MealType, Recipe } from '../types';
 import {
   MEAL_LABELS,
   entriesCalories,
@@ -6,6 +6,7 @@ import {
   entryCalories,
   entryMacros,
   hasMacros,
+  isFavorite,
   roundMacros,
 } from '../types';
 import { FoodSearch } from './FoodSearch';
@@ -14,15 +15,22 @@ interface MealSectionProps {
   meal: MealType;
   entries: MealEntry[];
   usdaApiKey: string;
+  jordanPriority: JordanPriority;
   recent: FoodItem[];
+  favorites: FoodItem[];
+  recipes: Recipe[];
   onAdd: (food: FoodItem, quantity: number) => void;
   onRemove: (entryId: string) => void;
   onQuantityChange: (entryId: string, quantity: number) => void;
+  onToggleFavorite: (food: FoodItem) => void;
 }
 
 /** One meal bucket for the selected day: its entries plus a search box. */
 export function MealSection(props: MealSectionProps) {
-  const { meal, entries, usdaApiKey, recent, onAdd, onRemove, onQuantityChange } = props;
+  const {
+    meal, entries, usdaApiKey, jordanPriority, recent, favorites, recipes,
+    onAdd, onRemove, onQuantityChange, onToggleFavorite,
+  } = props;
   const total = entriesCalories(entries);
   const macros = roundMacros(entriesMacros(entries));
 
@@ -70,6 +78,16 @@ export function MealSection(props: MealSectionProps) {
                   aria-label="Servings"
                 />
                 <span className="entry-cals">{entryCalories(entry)} kcal</span>
+                {entry.food.source !== 'recipe' && (
+                  <button
+                    className={`star-button ${isFavorite(favorites, entry.food) ? 'active' : ''}`}
+                    onClick={() => onToggleFavorite(entry.food)}
+                    title={isFavorite(favorites, entry.food) ? 'Remove from favorites' : 'Save to favorites'}
+                    aria-label="Toggle favorite"
+                  >
+                    {isFavorite(favorites, entry.food) ? '★' : '☆'}
+                  </button>
+                )}
                 <button
                   className="remove-button"
                   onClick={() => onRemove(entry.id)}
@@ -83,7 +101,16 @@ export function MealSection(props: MealSectionProps) {
         </ul>
       )}
 
-      <FoodSearch meal={meal} usdaApiKey={usdaApiKey} recent={recent} onAdd={onAdd} />
+      <FoodSearch
+        meal={meal}
+        usdaApiKey={usdaApiKey}
+        jordanPriority={jordanPriority}
+        recent={recent}
+        favorites={favorites}
+        recipes={recipes}
+        onAdd={onAdd}
+        onToggleFavorite={onToggleFavorite}
+      />
     </section>
   );
 }

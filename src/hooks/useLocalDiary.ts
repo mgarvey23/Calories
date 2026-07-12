@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { DiaryState, MealEntry, MealType, Settings } from '../types';
+import type { DiaryState, FoodItem, MealEntry, MealType, Recipe, Settings } from '../types';
 import {
   addEntryOp,
+  deleteRecipeOp,
   removeEntryOp,
+  saveRecipeOp,
+  toggleFavoriteOp,
   updateEntryQuantityOp,
   updateSettingsOp,
 } from '../diaryOps';
@@ -40,6 +43,25 @@ export function useLocalDiary() {
     [],
   );
   const replaceState = useCallback((next: DiaryState) => setState(next), []);
+  const toggleFavorite = useCallback(
+    (food: FoodItem) => setState((s) => toggleFavoriteOp(s, food)),
+    [],
+  );
+  const saveRecipe = useCallback((recipe: Recipe) => setState((s) => saveRecipeOp(s, recipe)), []);
+  const deleteRecipe = useCallback(
+    (recipeId: string) => setState((s) => deleteRecipeOp(s, recipeId)),
+    [],
+  );
 
-  return { state, addEntry, removeEntry, updateEntryQuantity, updateSettings, replaceState };
+  return {
+    state,
+    addEntry,
+    removeEntry,
+    updateEntryQuantity,
+    updateSettings,
+    replaceState,
+    toggleFavorite,
+    saveRecipe,
+    deleteRecipe,
+  };
 }

@@ -23,8 +23,13 @@ login). Your data is stored locally and can be exported/imported for backup.
   (Requires HTTPS — works on the deployed site and on `localhost`.)
 - **Macro tracking** — protein, carbs and fat are shown per food, per meal and
   as daily totals alongside calories.
-- **Recent foods** — foods you've logged before appear as one-tap quick-add
-  chips, so repeat meals don't need re-searching.
+- **Recent foods, favorites & recipes** — foods you've logged appear as one-tap
+  quick-adds; star foods to save them as favorites; build recipes (a named set
+  of ingredients) and log a whole meal in one tap.
+- **Scan analysis + Jordan's Suggestion** — scanning a product shows quick
+  pros/cons and "Jordan's Suggestion": the best similar product for you, ranked
+  by a priority you choose on your profile (balanced, fewest calories, most
+  protein per calorie, or least processed).
 - **Manual entry fallback** — add a food (with optional macros) by hand when it
   isn't found.
 - **Per-serving quantities** — set how many servings you ate; calories and
@@ -32,13 +37,15 @@ login). Your data is stored locally and can be exported/imported for backup.
 - **Daily goal + progress** — set a target and see how much you have left.
 - **Export / import** — back up your diary as JSON or move it between devices.
 
-- **Accounts & cloud sync** — sign in with Google; your diary is stored in
-  Cloud Firestore and synced across all your devices, with offline support.
+- **Accounts & cloud sync** — sign in with a simple username + password; your
+  diary is stored in Cloud Firestore and synced across all your devices, with
+  offline support.
 
 ## Tech stack
 
-React + TypeScript + Vite, with **Firebase** (Google Authentication + Cloud
-Firestore) for sign-in and cross-device sync.
+React + TypeScript + Vite, with **Firebase** (Email/Password authentication +
+Cloud Firestore) for accounts and cross-device sync. Usernames are mapped to a
+synthetic email under the hood, so no real email is required.
 
 ## Getting started
 
@@ -62,7 +69,7 @@ migrated to the cloud on first sign-in.
    **create a project**.
 2. **Add a Web app** (the `</>` icon). Copy the config values it shows into your
    `.env` file (`VITE_FIREBASE_*`, matching `.env.example`).
-3. **Authentication → Get started → Sign-in method →** enable **Google**.
+3. **Authentication → Get started → Sign-in method →** enable **Email/Password**.
 4. **Firestore Database → Create database** (start in production mode).
 5. **Firestore → Rules:** paste the contents of [`firestore.rules`](firestore.rules)
    and publish. This restricts each user to their own `users/{uid}` document.

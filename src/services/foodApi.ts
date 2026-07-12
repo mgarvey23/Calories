@@ -28,9 +28,35 @@ export interface FoodSearchResult {
   fat?: number;
 }
 
+/**
+ * A scanned/looked-up product enriched with the extra Open Food Facts fields
+ * used for the pros/cons analysis and "Jordan's Suggestion" comparison.
+ */
+export interface ScannedProduct extends FoodSearchResult {
+  nutriScore?: string; // a-e
+  nova?: number; // 1-4 processing level
+  nutrientLevels?: Record<string, string>; // fat / saturated-fat / sugars / salt -> low|moderate|high
+  categories?: string[]; // OFF category tags
+  sugars100g?: number;
+  satFat100g?: number;
+  fiber100g?: number;
+}
+
 /** Turn a search result into a persistable FoodItem with a fresh id. */
 export function toFoodItem(result: FoodSearchResult): FoodItem {
-  return { id: crypto.randomUUID(), ...result };
+  return {
+    id: crypto.randomUUID(),
+    name: result.name,
+    brand: result.brand,
+    source: result.source,
+    sourceId: result.sourceId,
+    servingSize: result.servingSize,
+    servingUnit: result.servingUnit,
+    calories: result.calories,
+    protein: result.protein,
+    carbs: result.carbs,
+    fat: result.fat,
+  };
 }
 
 /** Resolve the USDA API key: explicit setting > build-time var > shared demo. */
@@ -54,7 +80,14 @@ interface OffProduct {
   product_name?: string;
   brands?: string;
   nutriments?: Record<string, number | string | undefined>;
+  nutriscore_grade?: string;
+  nova_group?: number;
+  nutrient_levels?: Record<string, string>;
+  categories_tags?: string[];
 }
+
+const OFF_ANALYSIS_FIELDS =
+  'code,product_name,brands,nutriments,nutriscore_grade,nova_group,nutrient_levels,categories_tags';
 
 /**
  * Pull calories per 100 g from an Open Food Facts nutriments object, tolerating
@@ -73,7 +106,7 @@ function offKcalPer100g(n: OffProduct['nutriments']): number | undefined {
   return undefined;
 }
 
-function offProductToResult(p: OffProduct, fallbackCode?: string): FoodSearchResult | null {
+function offProductToResult(p: OffProduct, fallbackCode?: string): ScannedProduct | null {
   const name = p.product_name?.trim();
   const kcal = offKcalPer100g(p.nutriments);
   if (!name || kcal === undefined) return null;
@@ -88,6 +121,13 @@ function offProductToResult(p: OffProduct, fallbackCode?: string): FoodSearchRes
     protein: num(p.nutriments?.['proteins_100g']),
     carbs: num(p.nutriments?.['carbohydrates_100g']),
     fat: num(p.nutriments?.['fat_100g']),
+    nutriScore: p.nutriscore_grade && p.nutriscore_grade.length === 1 ? p.nutriscore_grade : undefined,
+    nova: typeof p.nova_group === 'number' ? p.nova_group : undefined,
+    nutrientLevels: p.nutrient_levels,
+    categories: p.categories_tags,
+    sugars100g: num(p.nutriments?.['sugars_100g']),
+    satFat100g: num(p.nutriments?.['saturated-fat_100g']),
+    fiber100g: num(p.nutriments?.['fiber_100g']),
   };
 }
 
@@ -111,8 +151,8 @@ async function searchOpenFoodFacts(query: string, signal?: AbortSignal): Promise
   return results;
 }
 
-async function offByBarcode(barcode: string, signal?: AbortSignal): Promise<FoodSearchResult | null> {
-  const params = new URLSearchParams({ fields: 'code,product_name,brands,nutriments' });
+async function offByBarcode(barcode: string, signal?: AbortSignal): Promise<ScannedProduct | null> {
+  const params = new URLSearchParams({ fields: OFF_ANALYSIS_FIELDS });
   const res = await fetch(`${OFF_PRODUCT_URL}/${encodeURIComponent(barcode)}.json?${params}`, {
     signal,
   });
@@ -120,6 +160,37 @@ async function offByBarcode(barcode: string, signal?: AbortSignal): Promise<Food
   const data = (await res.json()) as { status?: number; product?: OffProduct };
   if (data.status !== 1 || !data.product) return null;
   return offProductToResult(data.product, barcode);
+}
+
+/**
+ * Fetch similar products in the same Open Food Facts category, for comparing a
+ * scanned item against alternatives. Uses the most specific category tag.
+ */
+export async function fetchAlternatives(
+  product: ScannedProduct,
+  signal?: AbortSignal,
+): Promise<ScannedProduct[]> {
+  const category = product.categories?.[product.categories.length - 1];
+  if (!category) return [];
+  const params = new URLSearchParams({
+    action: 'process',
+    json: '1',
+    page_size: '40',
+    fields: OFF_ANALYSIS_FIELDS,
+    tagtype_0: 'categories',
+    tag_contains_0: 'contains',
+    tag_0: category,
+  });
+  const res = await fetch(`${OFF_SEARCH_URL}?${params}`, { signal });
+  if (!res.ok) throw new Error(`Open Food Facts error ${res.status}`);
+  const data = (await res.json()) as { products?: OffProduct[] };
+  const out: ScannedProduct[] = [];
+  for (const p of data.products ?? []) {
+    const r = offProductToResult(p);
+    // Exclude the scanned product itself and near-empty entries.
+    if (r && r.sourceId !== product.sourceId) out.push(r);
+  }
+  return out;
 }
 
 // --- USDA FoodData Central -------------------------------------------------
@@ -208,7 +279,7 @@ export interface BarcodeOptions {
 export async function fetchProductByBarcode(
   barcode: string,
   { usdaApiKey, signal }: BarcodeOptions = {},
-): Promise<FoodSearchResult | null> {
+): Promise<ScannedProduct | null> {
   const code = barcode.trim();
 
   // 1. Open Food Facts by exact code.

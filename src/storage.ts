@@ -12,10 +12,17 @@ const CURRENT_VERSION = 1;
 export const DEFAULT_SETTINGS: Settings = {
   dailyCalorieGoal: 2000,
   usdaApiKey: '',
+  jordanPriority: 'balanced',
 };
 
 export function defaultState(): DiaryState {
-  return { version: CURRENT_VERSION, settings: { ...DEFAULT_SETTINGS }, days: {} };
+  return {
+    version: CURRENT_VERSION,
+    settings: { ...DEFAULT_SETTINGS },
+    days: {},
+    favorites: [],
+    recipes: [],
+  };
 }
 
 /** Load and validate the diary from localStorage, falling back to defaults. */
@@ -47,6 +54,8 @@ function normalize(input: Partial<DiaryState>): DiaryState {
     version: CURRENT_VERSION,
     settings: { ...base.settings, ...(input.settings ?? {}) },
     days: input.days ?? {},
+    favorites: input.favorites ?? [],
+    recipes: input.recipes ?? [],
   };
 }
 
