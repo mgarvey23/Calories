@@ -101,7 +101,7 @@ function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: Rea
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🍎 Calorie Tracker</h1>
+        <h1>Calorie Tracker</h1>
         <div className="header-actions">
           <button onClick={() => setSelectedDate(todayISO())}>Today</button>
           <button onClick={() => setRecipesOpen(true)}>Recipes</button>
