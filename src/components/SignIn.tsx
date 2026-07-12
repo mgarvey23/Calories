@@ -31,7 +31,7 @@ export function SignIn({ onUseLocal }: { onUseLocal: () => void }) {
   return (
     <div className="signin">
       <div className="signin-card">
-        <h1>🍎 Calorie Tracker</h1>
+        <h1>Calorie Tracker</h1>
 
         {isFirebaseConfigured ? (
           <>
