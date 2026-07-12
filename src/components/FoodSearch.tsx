@@ -88,7 +88,7 @@ export function FoodSearch({ meal, usdaApiKey, recent, onAdd }: FoodSearchProps)
     setError(null);
     setResults([]);
     try {
-      const product = await fetchProductByBarcode(barcode);
+      const product = await fetchProductByBarcode(barcode, { usdaApiKey });
       if (product) {
         // Surface as a result so the user can confirm before logging.
         setResults([product]);
