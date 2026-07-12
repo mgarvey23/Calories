@@ -69,6 +69,29 @@ input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent)
   color: var(--muted);
 }
 
+.crash { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+.crash-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+  max-width: 460px;
+  text-align: center;
+}
+.crash-detail {
+  margin-top: 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  color: var(--over);
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 0.6rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
 /* Sign-in ----------------------------------------------------------------- */
 .signin {
   display: flex;

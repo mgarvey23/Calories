@@ -45,6 +45,16 @@ export default function App() {
 /** Cloud-synced path: waits for the Firestore subscription, then renders. */
 function CloudTracker({ uid, label, onSignOut }: { uid: string; label: string; onSignOut: () => void }) {
   const diary = useFirebaseDiary(uid);
+  if (diary.error && !diary.state) {
+    return (
+      <div className="app-loading">
+        <div style={{ textAlign: 'center' }}>
+          <p>Couldn't load your diary: {diary.error}</p>
+          <button onClick={onSignOut}>Sign out</button>
+        </div>
+      </div>
+    );
+  }
   if (!diary.state) {
     return <div className="app-loading">Syncing your diary…</div>;
   }

@@ -24,6 +24,7 @@ export function useFirebaseDiary(uid: string) {
   const [state, setState] = useState<DiaryState | null>(null);
   const stateRef = useRef<DiaryState | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -31,6 +32,7 @@ export function useFirebaseDiary(uid: string) {
 
   useEffect(() => {
     setState(null);
+    setError(null);
     const unsub = subscribeDiary(
       uid,
       (remote) => setState(remote),
@@ -41,6 +43,7 @@ export function useFirebaseDiary(uid: string) {
         setState(seed);
         void saveDiary(uid, seed);
       },
+      (err) => setError(err.message),
     );
     return () => {
       unsub();
@@ -97,6 +100,7 @@ export function useFirebaseDiary(uid: string) {
 
   return {
     state,
+    error,
     addEntry,
     removeEntry,
     updateEntryQuantity,
