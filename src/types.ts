@@ -20,7 +20,19 @@ export const MEAL_LABELS: Record<MealType, string> = {
 };
 
 /** Where the nutrition data for a food came from. */
-export type FoodSource = 'off' | 'usda' | 'manual';
+export type FoodSource = 'off' | 'usda' | 'manual' | 'recipe';
+
+/** How "Jordan's Suggestion" ranks alternative products. Chosen per profile. */
+export type JordanPriority = 'balanced' | 'calories' | 'protein' | 'clean';
+
+export const JORDAN_PRIORITIES: JordanPriority[] = ['balanced', 'calories', 'protein', 'clean'];
+
+export const JORDAN_PRIORITY_LABELS: Record<JordanPriority, string> = {
+  balanced: 'Balanced (calories, protein, sugar, processing)',
+  calories: 'Fewest calories per serving',
+  protein: 'Most protein per calorie',
+  clean: 'Least processed (Nutri-Score / NOVA)',
+};
 
 /**
  * A food and its nutrition for one reference serving. Calories/macros are
@@ -62,19 +74,35 @@ export interface DayLog {
   meals: Record<MealType, MealEntry[]>;
 }
 
+/** A user-saved recipe: named list of ingredients that yields N servings. */
+export interface Recipe {
+  id: string;
+  name: string;
+  /** Ingredients, each a food with a quantity (in that food's servings). */
+  ingredients: MealEntry[];
+  /** How many servings the whole recipe makes. */
+  servings: number;
+}
+
 /** User-level settings, persisted alongside the diary. */
 export interface Settings {
   /** Daily calorie target, used for progress display. */
   dailyCalorieGoal: number;
   /** Optional USDA FoodData Central API key. Falls back to DEMO_KEY if empty. */
   usdaApiKey: string;
+  /** How "Jordan's Suggestion" ranks alternatives. */
+  jordanPriority: JordanPriority;
 }
 
-/** The full persisted state: settings plus every day keyed by ISO date. */
+/** The full persisted state: settings, saved foods/recipes, and every day. */
 export interface DiaryState {
   version: number;
   settings: Settings;
   days: Record<string, DayLog>;
+  /** Foods the user has starred for one-tap re-logging. */
+  favorites: FoodItem[];
+  /** User-created recipes. */
+  recipes: Recipe[];
 }
 
 // --- Derived helpers -------------------------------------------------------
@@ -149,6 +177,44 @@ export function emptyDay(date: string): DayLog {
   };
 }
 
+// --- Favorites & recipes ---------------------------------------------------
+
+/** Stable identity for a food, used to match favorites. */
+export function foodKey(f: FoodItem): string {
+  return `${f.source}:${f.sourceId ?? ''}:${f.name.toLowerCase()}:${f.calories}`;
+}
+
+/** True if a food is already in the favorites list. */
+export function isFavorite(favorites: FoodItem[], food: FoodItem): boolean {
+  const key = foodKey(food);
+  return favorites.some((f) => foodKey(f) === key);
+}
+
+/** Total calories + macros for an entire recipe (all servings). */
+export function recipeTotals(recipe: Recipe): { calories: number } & Macros {
+  const calories = entriesCalories(recipe.ingredients);
+  const m = entriesMacros(recipe.ingredients);
+  return { calories, ...m };
+}
+
+/** A FoodItem representing one serving of a recipe, ready to log. */
+export function recipeServingFood(recipe: Recipe): FoodItem {
+  const totals = recipeTotals(recipe);
+  const servings = recipe.servings > 0 ? recipe.servings : 1;
+  return {
+    id: crypto.randomUUID(),
+    name: recipe.name,
+    source: 'recipe',
+    sourceId: recipe.id,
+    servingSize: 1,
+    servingUnit: 'serving',
+    calories: Math.round(totals.calories / servings),
+    protein: Math.round((totals.protein / servings) * 10) / 10,
+    carbs: Math.round((totals.carbs / servings) * 10) / 10,
+    fat: Math.round((totals.fat / servings) * 10) / 10,
+  };
+}
+
 /**
  * The diary operations the main UI needs, independent of where the data is
  * stored. Both the local (localStorage) and Firebase-backed hooks return this
@@ -161,4 +227,7 @@ export interface DiaryApi {
   updateEntryQuantity: (date: string, meal: MealType, entryId: string, quantity: number) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   replaceState: (next: DiaryState) => void;
+  toggleFavorite: (food: FoodItem) => void;
+  saveRecipe: (recipe: Recipe) => void;
+  deleteRecipe: (recipeId: string) => void;
 }

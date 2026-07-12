@@ -11,10 +11,11 @@ interface DayViewProps {
   onAdd: (meal: MealType, food: FoodItem, quantity: number) => void;
   onRemove: (meal: MealType, entryId: string) => void;
   onQuantityChange: (meal: MealType, entryId: string, quantity: number) => void;
+  onToggleFavorite: (food: FoodItem) => void;
 }
 
 /** The selected day: a calorie summary against goal, then each meal. */
-export function DayView({ state, date, onAdd, onRemove, onQuantityChange }: DayViewProps) {
+export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onToggleFavorite }: DayViewProps) {
   const day = state.days[date] ?? emptyDay(date);
   const total = dayCalories(day);
   const macros = roundMacros(dayMacros(day));
@@ -55,10 +56,14 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange }: DayV
           meal={meal}
           entries={day.meals[meal]}
           usdaApiKey={state.settings.usdaApiKey}
+          jordanPriority={state.settings.jordanPriority}
           recent={recent}
+          favorites={state.favorites}
+          recipes={state.recipes}
           onAdd={(food, qty) => onAdd(meal, food, qty)}
           onRemove={(id) => onRemove(meal, id)}
           onQuantityChange={(id, qty) => onQuantityChange(meal, id, qty)}
+          onToggleFavorite={onToggleFavorite}
         />
       ))}
     </div>

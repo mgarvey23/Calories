@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import type { DiaryState, Settings } from '../types';
+import type { DiaryState, JordanPriority, Settings } from '../types';
+import { JORDAN_PRIORITIES, JORDAN_PRIORITY_LABELS } from '../types';
 import { exportState, importState } from '../storage';
 
 interface SettingsPanelProps {
@@ -59,6 +60,19 @@ export function SettingsPanel({ state, onUpdateSettings, onReplaceState, onClose
             type="number" value={goal} min="0"
             onChange={(e) => setGoal(e.target.value)} onBlur={saveGoal}
           />
+        </label>
+
+        <label className="field">
+          <span>Jordan's Suggestion priority</span>
+          <select
+            value={state.settings.jordanPriority}
+            onChange={(e) => onUpdateSettings({ jordanPriority: e.target.value as JordanPriority })}
+          >
+            {JORDAN_PRIORITIES.map((p) => (
+              <option key={p} value={p}>{JORDAN_PRIORITY_LABELS[p]}</option>
+            ))}
+          </select>
+          <small>How Jordan ranks better product alternatives when you scan an item.</small>
         </label>
 
         <label className="field">

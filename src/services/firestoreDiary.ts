@@ -19,6 +19,8 @@ function normalize(data: Partial<DiaryState> | undefined): DiaryState {
     version: base.version,
     settings: { ...base.settings, ...(data?.settings ?? {}) },
     days: data?.days ?? {},
+    favorites: data?.favorites ?? [],
+    recipes: data?.recipes ?? [],
   };
 }
 

@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react';
-import { useAuth } from './auth';
+import { useAuth, usernameFromUser } from './auth';
 import { isFirebaseConfigured } from './firebase';
 import { useFirebaseDiary } from './hooks/useFirebaseDiary';
 import { useLocalDiary } from './hooks/useLocalDiary';
 import { Calendar } from './components/Calendar';
 import { DayView } from './components/DayView';
 import { SettingsPanel } from './components/SettingsPanel';
+import { RecipesPanel } from './components/RecipesPanel';
 import { SignIn } from './components/SignIn';
 import { todayISO } from './dateUtils';
 import type { DiaryApi, FoodItem, MealEntry, MealType } from './types';
@@ -32,7 +33,7 @@ export default function App() {
   }
   if (user) {
     return (
-      <CloudTracker uid={user.uid} label={user.email ?? 'Account'} onSignOut={signOutUser} />
+      <CloudTracker uid={user.uid} label={usernameFromUser(user)} onSignOut={signOutUser} />
     );
   }
   if (localMode) {
@@ -80,6 +81,7 @@ function LocalTracker({ onSignIn }: { onSignIn?: () => void }) {
 function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: ReactNode }) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [recipesOpen, setRecipesOpen] = useState(false);
 
   function handleAdd(meal: MealType, food: FoodItem, quantity: number) {
     const entry: MealEntry = { id: crypto.randomUUID(), food, quantity };
@@ -92,6 +94,7 @@ function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: Rea
         <h1>🍎 Calorie Tracker</h1>
         <div className="header-actions">
           <button onClick={() => setSelectedDate(todayISO())}>Today</button>
+          <button onClick={() => setRecipesOpen(true)}>Recipes</button>
           <button onClick={() => setSettingsOpen(true)}>Settings</button>
           {headerExtra}
         </div>
@@ -114,6 +117,7 @@ function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: Rea
             onQuantityChange={(meal, id, qty) =>
               diary.updateEntryQuantity(selectedDate, meal, id, qty)
             }
+            onToggleFavorite={diary.toggleFavorite}
           />
         </div>
       </main>
@@ -124,6 +128,16 @@ function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: Rea
           onUpdateSettings={diary.updateSettings}
           onReplaceState={diary.replaceState}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+
+      {recipesOpen && (
+        <RecipesPanel
+          recipes={diary.state.recipes}
+          usdaApiKey={diary.state.settings.usdaApiKey}
+          onSave={diary.saveRecipe}
+          onDelete={diary.deleteRecipe}
+          onClose={() => setRecipesOpen(false)}
         />
       )}
     </div>
