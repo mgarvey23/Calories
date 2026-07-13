@@ -37,6 +37,9 @@ export interface ScannedProduct extends FoodSearchResult {
   nova?: number; // 1-4 processing level
   nutrientLevels?: Record<string, string>; // fat / saturated-fat / sugars / salt -> low|moderate|high
   categories?: string[]; // OFF category tags
+  // Per-100g values, kept for analysis/scoring regardless of the logged serving.
+  caloriesPer100g?: number;
+  proteinPer100g?: number;
   sugars100g?: number;
   satFat100g?: number;
   fiber100g?: number;
@@ -84,10 +87,17 @@ interface OffProduct {
   nova_group?: number;
   nutrient_levels?: Record<string, string>;
   categories_tags?: string[];
+  serving_quantity?: number | string;
+  serving_size?: string;
 }
 
 const OFF_ANALYSIS_FIELDS =
-  'code,product_name,brands,nutriments,nutriscore_grade,nova_group,nutrient_levels,categories_tags';
+  'code,product_name,brands,nutriments,serving_quantity,serving_size,' +
+  'nutriscore_grade,nova_group,nutrient_levels,categories_tags';
+
+function round1(v: number | undefined): number | undefined {
+  return v === undefined ? undefined : Math.round(v * 10) / 10;
+}
 
 /**
  * Pull calories per 100 g from an Open Food Facts nutriments object, tolerating
@@ -108,26 +118,51 @@ function offKcalPer100g(n: OffProduct['nutriments']): number | undefined {
 
 function offProductToResult(p: OffProduct, fallbackCode?: string): ScannedProduct | null {
   const name = p.product_name?.trim();
-  const kcal = offKcalPer100g(p.nutriments);
-  if (!name || kcal === undefined) return null;
+  const kcal100 = offKcalPer100g(p.nutriments);
+  if (!name || kcal100 === undefined) return null;
+  const n = p.nutriments;
+  const prot100 = num(n?.['proteins_100g']);
+  const carb100 = num(n?.['carbohydrates_100g']);
+  const fat100 = num(n?.['fat_100g']);
+
+  // If the product declares a serving size (grams), log ONE serving using its
+  // per-serving nutrition (or per-100g scaled to the serving). Otherwise fall
+  // back to a 100 g reference serving.
+  const servingG = num(p.serving_quantity);
+  const hasServing = servingG !== undefined && servingG > 0 && servingG <= 2000;
+  const factor = hasServing ? servingG / 100 : 1;
+
+  const perServing = (per100: number | undefined, servingKey: string): number | undefined => {
+    if (!hasServing) return per100;
+    const direct = num(n?.[servingKey]);
+    if (direct !== undefined) return direct;
+    return per100 !== undefined ? per100 * factor : undefined;
+  };
+
+  const calories = hasServing
+    ? Math.round(num(n?.['energy-kcal_serving']) ?? kcal100 * factor)
+    : Math.round(kcal100);
+
   return {
     name,
     brand: p.brands?.split(',')[0]?.trim() || undefined,
     source: 'off',
     sourceId: p.code ?? fallbackCode,
-    servingSize: 100,
+    servingSize: hasServing ? Math.round(servingG!) : 100,
     servingUnit: 'g',
-    calories: Math.round(kcal),
-    protein: num(p.nutriments?.['proteins_100g']),
-    carbs: num(p.nutriments?.['carbohydrates_100g']),
-    fat: num(p.nutriments?.['fat_100g']),
+    calories,
+    protein: round1(perServing(prot100, 'proteins_serving')),
+    carbs: round1(perServing(carb100, 'carbohydrates_serving')),
+    fat: round1(perServing(fat100, 'fat_serving')),
+    caloriesPer100g: Math.round(kcal100),
+    proteinPer100g: prot100,
     nutriScore: p.nutriscore_grade && p.nutriscore_grade.length === 1 ? p.nutriscore_grade : undefined,
     nova: typeof p.nova_group === 'number' ? p.nova_group : undefined,
     nutrientLevels: p.nutrient_levels,
     categories: p.categories_tags,
-    sugars100g: num(p.nutriments?.['sugars_100g']),
-    satFat100g: num(p.nutriments?.['saturated-fat_100g']),
-    fiber100g: num(p.nutriments?.['fiber_100g']),
+    sugars100g: num(n?.['sugars_100g']),
+    satFat100g: num(n?.['saturated-fat_100g']),
+    fiber100g: num(n?.['fiber_100g']),
   };
 }
 
@@ -138,7 +173,7 @@ async function searchOpenFoodFacts(query: string, signal?: AbortSignal): Promise
     action: 'process',
     json: '1',
     page_size: '20',
-    fields: 'code,product_name,brands,nutriments',
+    fields: 'code,product_name,brands,nutriments,serving_quantity,serving_size',
   });
   const res = await fetch(`${OFF_SEARCH_URL}?${params}`, { signal });
   if (!res.ok) throw new Error(`Open Food Facts error ${res.status}`);
@@ -207,6 +242,8 @@ interface UsdaFood {
   description?: string;
   brandOwner?: string;
   gtinUpc?: string;
+  servingSize?: number;
+  servingSizeUnit?: string;
   foodNutrients?: UsdaNutrient[];
 }
 
@@ -215,22 +252,36 @@ function findNutrient(nutrients: UsdaNutrient[] | undefined, name: string): numb
   return match?.value;
 }
 
-function usdaFoodToResult(f: UsdaFood): FoodSearchResult | null {
+function usdaFoodToResult(f: UsdaFood): ScannedProduct | null {
   const name = f.description?.trim();
-  const kcal = findNutrient(f.foodNutrients, 'energy');
-  if (!name || kcal === undefined) return null;
+  const kcal100 = findNutrient(f.foodNutrients, 'energy');
+  if (!name || kcal100 === undefined) return null;
+  const prot100 = findNutrient(f.foodNutrients, 'protein');
+  const carb100 = findNutrient(f.foodNutrients, 'carbohydrate');
+  const fat100 = findNutrient(f.foodNutrients, 'total lipid');
+
+  // USDA foodNutrients are per 100 g/ml. Branded foods declare a serving size;
+  // log one serving of that size rather than a flat 100 g.
+  const unit = f.servingSizeUnit?.toLowerCase();
+  const hasServing =
+    f.servingSize !== undefined && f.servingSize > 0 && (unit === 'g' || unit === 'ml');
+  const factor = hasServing ? f.servingSize! / 100 : 1;
+  const scale = (v: number | undefined) =>
+    v === undefined ? undefined : Math.round(v * factor * 10) / 10;
+
   return {
-    // USDA descriptions are ALL CAPS for branded items; tidy generic ones read fine.
     name,
     brand: f.brandOwner?.trim() || undefined,
     source: 'usda',
     sourceId: f.fdcId !== undefined ? String(f.fdcId) : undefined,
-    servingSize: 100,
-    servingUnit: 'g',
-    calories: Math.round(kcal),
-    protein: findNutrient(f.foodNutrients, 'protein'),
-    carbs: findNutrient(f.foodNutrients, 'carbohydrate'),
-    fat: findNutrient(f.foodNutrients, 'total lipid'),
+    servingSize: hasServing ? Math.round(f.servingSize!) : 100,
+    servingUnit: hasServing ? unit! : 'g',
+    calories: Math.round(kcal100 * factor),
+    protein: scale(prot100),
+    carbs: scale(carb100),
+    fat: scale(fat100),
+    caloriesPer100g: Math.round(kcal100),
+    proteinPer100g: prot100,
   };
 }
 

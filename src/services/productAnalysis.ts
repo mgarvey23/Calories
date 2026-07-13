@@ -14,13 +14,18 @@ export interface ProsCons {
 
 const NUTRISCORE_VALUE: Record<string, number> = { a: 5, b: 4, c: 3, d: 2, e: 1 };
 
+/** Calories per 100g for scoring (falls back to the logged value). */
+const cal100 = (p: ScannedProduct) => p.caloriesPer100g ?? p.calories;
+/** Protein per 100g for scoring (falls back to the logged value). */
+const protein100 = (p: ScannedProduct) => p.proteinPer100g ?? p.protein ?? 0;
+
 /** Short human-readable pros and cons derived from label/nutrition signals. */
 export function generateProsCons(p: ScannedProduct): ProsCons {
   const pros: string[] = [];
   const cons: string[] = [];
   const levels = p.nutrientLevels ?? {};
 
-  const protein = p.protein ?? 0;
+  const protein = protein100(p);
   if (protein >= 10) pros.push(`Good source of protein (${Math.round(protein)}g per 100g)`);
   if ((p.fiber100g ?? 0) >= 5) pros.push('High in fiber');
   if (levels.sugars === 'low') pros.push('Low in sugar');
@@ -38,7 +43,7 @@ export function generateProsCons(p: ScannedProduct): ProsCons {
     cons.push(`Nutri-Score ${p.nutriScore.toUpperCase()}`);
   }
   if (p.nova === 4) cons.push('Ultra-processed');
-  if (p.calories >= 400) cons.push(`Calorie-dense (${p.calories} kcal per 100g)`);
+  if (cal100(p) >= 400) cons.push(`Calorie-dense (${cal100(p)} kcal per 100g)`);
 
   if (pros.length === 0) pros.push('Fits your day if the portion is right');
   if (cons.length === 0) cons.push('No major nutritional red flags');
@@ -51,8 +56,8 @@ function clamp(n: number, lo: number, hi: number): number {
 
 /** A 0-100 "goodness" score for a product under the given priority. Higher = better. */
 export function scoreProduct(p: ScannedProduct, priority: JordanPriority): number {
-  const cal = p.calories || 0; // per 100g
-  const protein = p.protein ?? 0;
+  const cal = cal100(p); // per 100g
+  const protein = protein100(p);
   const sugar = p.sugars100g ?? (p.nutrientLevels?.sugars === 'high' ? 30 : p.nutrientLevels?.sugars === 'moderate' ? 12 : 2);
   const nutri = p.nutriScore ? NUTRISCORE_VALUE[p.nutriScore] ?? 3 : 3; // 1-5
   const nova = p.nova ?? 2; // 1-4
@@ -87,8 +92,8 @@ export interface Suggestion {
 /** Explain why `winner` beats `baseline` under the priority. */
 function reasonsFor(winner: ScannedProduct, baseline: ScannedProduct, priority: JordanPriority): string[] {
   const reasons: string[] = [];
-  const calDiff = baseline.calories - winner.calories;
-  const protDiff = (winner.protein ?? 0) - (baseline.protein ?? 0);
+  const calDiff = cal100(baseline) - cal100(winner);
+  const protDiff = protein100(winner) - protein100(baseline);
 
   if (priority === 'calories' || priority === 'balanced') {
     if (calDiff >= 15) reasons.push(`${Math.round(calDiff)} fewer calories per 100g`);
