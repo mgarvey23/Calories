@@ -1,7 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { MealEntry, Recipe } from '../types';
 import { entryCalories, recipeServingFood, recipeTotals } from '../types';
-import { searchFoods, toFoodItem, type FoodSearchResult } from '../services/foodApi';
+import {
+  fetchProductByBarcode,
+  searchFoods,
+  toFoodItem,
+  type FoodSearchResult,
+} from '../services/foodApi';
+
+const BarcodeScanner = lazy(() =>
+  import('./BarcodeScanner').then((m) => ({ default: m.BarcodeScanner })),
+);
 
 interface RecipesPanelProps {
   recipes: Recipe[];
@@ -168,7 +177,29 @@ function IngredientSearch({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  async function handleBarcode(barcode: string) {
+    setScannerOpen(false);
+    setLoading(true);
+    setError(null);
+    try {
+      const product = await fetchProductByBarcode(barcode, { usdaApiKey });
+      if (product) {
+        onPick(product);
+        setQuery('');
+        setResults([]);
+      } else {
+        setError(`No product found for barcode ${barcode}.`);
+      }
+    } catch {
+      setError('Barcode lookup failed.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -194,8 +225,20 @@ function IngredientSearch({
 
   return (
     <div className="food-search">
-      <input placeholder="Add an ingredient…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <div className="search-input-row">
+        <input placeholder="Add an ingredient…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <button
+          type="button"
+          className="scan-button"
+          onClick={() => setScannerOpen(true)}
+          title="Scan an ingredient"
+          aria-label="Scan an ingredient"
+        >
+          📷
+        </button>
+      </div>
       {loading && <div className="search-status">Searching…</div>}
+      {error && <div className="search-status error">{error}</div>}
       {results.length > 0 && (
         <ul className="search-results">
           {results.slice(0, 12).map((r, i) => (
@@ -217,6 +260,11 @@ function IngredientSearch({
             </li>
           ))}
         </ul>
+      )}
+      {scannerOpen && (
+        <Suspense fallback={<div className="search-status">Loading scanner…</div>}>
+          <BarcodeScanner onDetected={handleBarcode} onClose={() => setScannerOpen(false)} />
+        </Suspense>
       )}
     </div>
   );

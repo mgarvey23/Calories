@@ -734,3 +734,18 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 /* Analysis / Jordan tweaks */
 .analysis { border-radius: 14px; }
 .jordan-title { letter-spacing: -0.01em; }
+
+/* Clickable logged entry (re-open analysis) */
+.entry-name-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  display: block;
+}
+.entry-name-button:hover { color: var(--accent-strong); background: none; }
+.entry-info { color: var(--muted); font-size: 0.75rem; margin-left: 0.35rem; }
+.entry-name-button:hover .entry-info { color: var(--accent); }
