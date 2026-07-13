@@ -25,6 +25,7 @@ function normalize(data: Partial<DiaryState> | undefined): DiaryState {
       ...base.settings,
       ...settingsIn,
       profile: { ...base.settings.profile, ...(settingsIn.profile ?? {}) },
+      macroGoals: { ...base.settings.macroGoals, ...(settingsIn.macroGoals ?? {}) },
     },
     days: data?.days ?? {},
     favorites: data?.favorites ?? [],

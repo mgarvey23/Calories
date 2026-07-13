@@ -22,7 +22,7 @@ export const MEAL_LABELS: Record<MealType, string> = {
 };
 
 /** Where the nutrition data for a food came from. */
-export type FoodSource = 'off' | 'usda' | 'manual' | 'recipe';
+export type FoodSource = 'off' | 'usda' | 'manual' | 'recipe' | 'community';
 
 /** How "Jordan's Suggestion" ranks alternative products. Chosen per profile. */
 export type JordanPriority = 'balanced' | 'calories' | 'protein' | 'clean';
@@ -96,6 +96,8 @@ export interface Settings {
   jordanPriority: JordanPriority;
   /** Body profile used to recommend a calorie goal. */
   profile: Profile;
+  /** Daily macro targets in grams (protein/carbs/fat). */
+  macroGoals: Macros;
 }
 
 /** The full persisted state: settings, saved foods/recipes, and every day. */

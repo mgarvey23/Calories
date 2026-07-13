@@ -749,3 +749,25 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 .entry-name-button:hover { color: var(--accent-strong); background: none; }
 .entry-info { color: var(--muted); font-size: 0.75rem; margin-left: 0.35rem; }
 .entry-name-button:hover .entry-info { color: var(--accent); }
+
+/* Macro goal rings --------------------------------------------------------- */
+.summary-stats { display: flex; gap: 1.5rem; }
+.macro-rings { display: flex; gap: 0.9rem; margin-top: 0.9rem; flex-wrap: wrap; }
+.macro-ring { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mini-ring { position: relative; }
+.mini-ring-value {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 700;
+}
+.macro-ring-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.macro-ring-goal { font-size: 0.66rem; color: var(--muted); }
+
+.macro-goal-inputs { display: flex; gap: 0.5rem; }
+.macro-goal-inputs label { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.macro-goal-inputs small { color: var(--muted); font-size: 0.72rem; }
+.macro-goal-inputs input { width: 100%; }
+
+/* Manual entry UPC scan ---------------------------------------------------- */
+.manual-barcode { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.barcode-tag { font-size: 0.72rem; color: var(--accent-strong); }

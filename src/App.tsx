@@ -9,6 +9,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { RecipesPanel } from './components/RecipesPanel';
 import { ProfilePanel } from './components/ProfilePanel';
 import { SignIn } from './components/SignIn';
+import { saveSharedFood } from './services/sharedFoods';
 import { todayISO } from './dateUtils';
 import type { DiaryApi, FoodItem, MealEntry, MealType } from './types';
 
@@ -62,6 +63,7 @@ function CloudTracker({ uid, label, onSignOut }: { uid: string; label: string; o
   return (
     <TrackerView
       diary={diary as DiaryApi}
+      onContributeFood={(food) => saveSharedFood(food, uid)}
       headerExtra={
         <>
           <span className="user-label" title={label}>{label}</span>
@@ -89,7 +91,15 @@ function LocalTracker({ onSignIn }: { onSignIn?: () => void }) {
 }
 
 /** The main tracker UI, backend-agnostic (works with either diary hook). */
-function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: ReactNode }) {
+function TrackerView({
+  diary,
+  headerExtra,
+  onContributeFood,
+}: {
+  diary: DiaryApi;
+  headerExtra: ReactNode;
+  onContributeFood?: (food: FoodItem) => void;
+}) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [recipesOpen, setRecipesOpen] = useState(false);
@@ -131,6 +141,7 @@ function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: Rea
               diary.updateEntryQuantity(selectedDate, meal, id, qty)
             }
             onToggleFavorite={diary.toggleFavorite}
+            onContributeFood={onContributeFood}
           />
         </div>
       </main>
