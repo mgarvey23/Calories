@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { DiaryState, FoodItem, MealType } from '../types';
 import { MEAL_TYPES, dayCalories, dayMacros, emptyDay, roundMacros } from '../types';
 import { formatLongDate } from '../dateUtils';
 import { recentFoods } from '../foodHistory';
 import { MealSection } from './MealSection';
 import { CalorieRing } from './CalorieRing';
+import { EntryAnalysisModal } from './EntryAnalysisModal';
 
 interface DayViewProps {
   state: DiaryState;
@@ -22,6 +23,7 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
   const macros = roundMacros(dayMacros(day));
   const goal = state.settings.dailyCalorieGoal;
   const recent = useMemo(() => recentFoods(state), [state.days]);
+  const [analysis, setAnalysis] = useState<{ food: FoodItem; meal: MealType } | null>(null);
 
   return (
     <div className="day-view">
@@ -59,8 +61,19 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
           onRemove={(id) => onRemove(meal, id)}
           onQuantityChange={(id, qty) => onQuantityChange(meal, id, qty)}
           onToggleFavorite={onToggleFavorite}
+          onShowAnalysis={(food) => setAnalysis({ food, meal })}
         />
       ))}
+
+      {analysis && (
+        <EntryAnalysisModal
+          food={analysis.food}
+          priority={state.settings.jordanPriority}
+          usdaApiKey={state.settings.usdaApiKey}
+          onAddAlternative={(f) => onAdd(analysis.meal, f, 1)}
+          onClose={() => setAnalysis(null)}
+        />
+      )}
     </div>
   );
 }

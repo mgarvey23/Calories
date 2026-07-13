@@ -23,13 +23,14 @@ interface MealSectionProps {
   onRemove: (entryId: string) => void;
   onQuantityChange: (entryId: string, quantity: number) => void;
   onToggleFavorite: (food: FoodItem) => void;
+  onShowAnalysis: (food: FoodItem) => void;
 }
 
 /** One meal bucket for the selected day: its entries plus a search box. */
 export function MealSection(props: MealSectionProps) {
   const {
     meal, entries, usdaApiKey, jordanPriority, recent, favorites, recipes,
-    onAdd, onRemove, onQuantityChange, onToggleFavorite,
+    onAdd, onRemove, onQuantityChange, onToggleFavorite, onShowAnalysis,
   } = props;
   const total = entriesCalories(entries);
   const macros = roundMacros(entriesMacros(entries));
@@ -51,10 +52,22 @@ export function MealSection(props: MealSectionProps) {
           {entries.map((entry) => (
             <li key={entry.id} className="entry">
               <div className="entry-main">
-                <span className="entry-name">
-                  {entry.food.name}
-                  {entry.food.brand && <span className="entry-brand"> · {entry.food.brand}</span>}
-                </span>
+                {entry.food.source === 'off' && entry.food.sourceId ? (
+                  <button
+                    className="entry-name entry-name-button"
+                    onClick={() => onShowAnalysis(entry.food)}
+                    title="View pros/cons and Jordan's Suggestion"
+                  >
+                    {entry.food.name}
+                    {entry.food.brand && <span className="entry-brand"> · {entry.food.brand}</span>}
+                    <span className="entry-info">ⓘ</span>
+                  </button>
+                ) : (
+                  <span className="entry-name">
+                    {entry.food.name}
+                    {entry.food.brand && <span className="entry-brand"> · {entry.food.brand}</span>}
+                  </span>
+                )}
                 <span className="entry-serving">
                   {entry.food.servingSize * entry.quantity}
                   {entry.food.servingUnit}
