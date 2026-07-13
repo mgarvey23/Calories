@@ -77,13 +77,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Show the mapped message plus the raw Firebase code, so unexpected errors
+  // are self-diagnosing on screen (no dev console needed).
+  function describe(err: unknown): string {
+    const code = (err as { code?: string }).code;
+    const msg = messageFor(code);
+    return code ? `${msg} [${code}]` : msg;
+  }
+
   async function signIn(username: string, password: string) {
     if (!auth) return;
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, usernameToEmail(username), password);
     } catch (err) {
-      setError(messageFor((err as { code?: string }).code));
+      setError(describe(err));
       throw err;
     }
   }
@@ -94,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await createUserWithEmailAndPassword(auth, usernameToEmail(username), password);
     } catch (err) {
-      setError(messageFor((err as { code?: string }).code));
+      setError(describe(err));
       throw err;
     }
   }
