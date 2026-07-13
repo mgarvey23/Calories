@@ -1,14 +1,47 @@
 :root {
-  --bg: #f5f7fa;
+  --bg: #eef2f7;
+  --bg-grad:
+    radial-gradient(1100px 550px at 100% -12%, #dcecff 0%, transparent 58%),
+    radial-gradient(900px 480px at -12% 112%, #d9fbe9 0%, transparent 55%);
   --surface: #ffffff;
-  --border: #e2e8f0;
-  --text: #1a202c;
-  --muted: #718096;
-  --accent: #38a169;
-  --accent-soft: #c6f6d5;
-  --over: #e53e3e;
-  --radius: 10px;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --surface-2: #f6f8fb;
+  --border: #e7ebf1;
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #16a34a;
+  --accent-strong: #15803d;
+  --accent-soft: #dcfce7;
+  --over: #ef4444;
+  --protein: #2563eb;
+  --carbs: #ea580c;
+  --fat: #7c3aed;
+  --ring-track: #e8edf3;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 26px rgba(16, 24, 40, 0.07);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1220;
+    --bg-grad:
+      radial-gradient(1100px 550px at 100% -12%, #12233f 0%, transparent 58%),
+      radial-gradient(900px 480px at -12% 112%, #0f2a20 0%, transparent 55%);
+    --surface: #121a2a;
+    --surface-2: #0e1524;
+    --border: #24304a;
+    --text: #e7ecf5;
+    --muted: #94a3b8;
+    --accent: #34d399;
+    --accent-strong: #10b981;
+    --accent-soft: #10321f;
+    --over: #f87171;
+    --protein: #60a5fa;
+    --carbs: #fb923c;
+    --fat: #a78bfa;
+    --ring-track: #24304a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 30px rgba(0, 0, 0, 0.4);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -17,6 +50,8 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
+  background-image: var(--bg-grad);
+  background-attachment: fixed;
   color: var(--text);
 }
 
@@ -525,3 +560,177 @@ select {
 }
 .scanner-error { padding: 1.5rem 0.5rem; text-align: center; color: var(--over); }
 .scanner-hint { text-align: center; color: var(--muted); font-size: 0.8rem; margin: 0.75rem 0 0; }
+
+/* ==========================================================================
+   Visual refresh
+   ========================================================================== */
+
+.app { max-width: 1120px; }
+
+/* App bar ------------------------------------------------------------------ */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: -1rem -1rem 1rem;
+  padding: 0.85rem 1.25rem;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.app-header h1 {
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.app-header h1::before {
+  content: '';
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 8px;
+  background: linear-gradient(140deg, var(--accent), var(--accent-strong));
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.header-actions { flex-wrap: wrap; }
+
+/* Buttons ------------------------------------------------------------------ */
+button {
+  border-radius: 10px;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s, box-shadow 0.15s;
+}
+button:active { transform: translateY(1px); }
+.header-actions > button {
+  background: var(--surface-2);
+  border-color: transparent;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+.header-actions > button:hover { border-color: var(--border); background: var(--surface); }
+.primary-button {
+  background: linear-gradient(140deg, var(--accent), var(--accent-strong));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.primary-button:hover { background: linear-gradient(140deg, var(--accent), var(--accent-strong)); filter: brightness(1.05); }
+
+input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color: var(--accent); }
+
+/* Cards get a touch more polish (radius/shadow come from vars) */
+.calendar, .day-view, .meal-section, .day-summary, .settings-panel {
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+}
+
+/* Day summary + calorie ring ---------------------------------------------- */
+.day-summary { padding: 1.25rem; }
+.day-summary h2 { font-size: 1rem; color: var(--muted); font-weight: 600; }
+.summary-body { display: flex; align-items: center; gap: 1.25rem; }
+@media (max-width: 420px) { .summary-body { flex-direction: column; text-align: center; } }
+
+.ring { position: relative; flex-shrink: 0; }
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.ring-number { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+.ring-number.over { color: var(--over); }
+.ring-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-top: 2px; }
+
+.summary-side { flex: 1; display: flex; flex-wrap: wrap; gap: 0.6rem 1.5rem; align-items: center; }
+.summary-stat { display: flex; flex-direction: column; }
+.summary-stat strong { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
+.summary-stat span { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+
+/* Macro pills */
+.macro-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; width: 100%; margin-top: 0.25rem; }
+.macro {
+  flex: 1;
+  min-width: 5rem;
+  display: flex; flex-direction: column;
+  gap: 1px;
+  padding: 0.5rem 0.7rem;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border-left: 4px solid var(--muted);
+  font-size: 0.7rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.macro strong { font-size: 1.05rem; color: var(--text); text-transform: none; letter-spacing: 0; }
+.macro.protein { border-left-color: var(--protein); }
+.macro.carbs { border-left-color: var(--carbs); }
+.macro.fat { border-left-color: var(--fat); }
+
+/* Meals -------------------------------------------------------------------- */
+.meal-section { padding: 1rem 1.1rem; }
+.meal-header h3 { letter-spacing: -0.01em; }
+.meal-total { font-weight: 600; color: var(--text); }
+.meal-macros { font-weight: 400; color: var(--muted); }
+.entry { border-bottom-color: color-mix(in srgb, var(--border) 80%, transparent); }
+.entry-name { font-weight: 500; }
+
+/* Quick chips -------------------------------------------------------------- */
+.quick-chip, .recent-chip {
+  background: var(--surface-2);
+  border-color: transparent;
+  border-radius: 999px;
+  font-weight: 500;
+}
+.quick-chip:hover { background: var(--accent-soft); color: var(--accent-strong); border-color: transparent; }
+.recipe-chip { background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface-2)); }
+
+/* Search box */
+.search-input-row input { border-radius: 12px; }
+.scan-button { border-radius: 12px; background: var(--surface-2); border-color: transparent; }
+.scan-button:hover { background: var(--accent-soft); }
+.search-results { border-radius: 12px; }
+
+/* Calendar ----------------------------------------------------------------- */
+.calendar { padding: 1.1rem; }
+.calendar-header h2 { font-size: 1.05rem; letter-spacing: -0.01em; }
+.calendar-header button { border-radius: 10px; background: var(--surface-2); border-color: transparent; }
+.day-cell { border-radius: 12px; border-color: transparent; background: var(--surface-2); }
+.day-cell:hover { background: var(--accent-soft); }
+.day-cell.empty { background: transparent; }
+.day-cell.today { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--surface-2); }
+.day-cell.selected {
+  background: linear-gradient(140deg, var(--accent), var(--accent-strong));
+  color: #fff;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.day-cell.selected .day-cals { color: #fff; }
+
+/* Profile panel ------------------------------------------------------------ */
+.unit-toggle {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 3px;
+  margin-top: 0.75rem;
+}
+.unit-toggle button {
+  border: none; background: transparent; border-radius: 999px;
+  padding: 0.35rem 0.9rem; font-size: 0.82rem; color: var(--muted);
+}
+.unit-toggle button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
+.profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.inline-inputs { display: flex; gap: 0.5rem; }
+.inline-inputs input { width: 100%; min-width: 0; }
+
+.reco-card {
+  margin-top: 1.1rem;
+  padding: 1rem 1.15rem;
+  border-radius: 14px;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--accent-soft) 80%, var(--surface)), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+}
+.reco-main { display: flex; align-items: baseline; gap: 0.4rem; }
+.reco-number { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; color: var(--accent-strong); }
+.reco-unit { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+.reco-sub { margin: 0.35rem 0 0; font-size: 0.8rem; color: var(--muted); }
+
+/* Analysis / Jordan tweaks */
+.analysis { border-radius: 14px; }
+.jordan-title { letter-spacing: -0.01em; }

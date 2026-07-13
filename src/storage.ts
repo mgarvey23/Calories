@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import type { DiaryState, Settings } from './types';
+import { DEFAULT_PROFILE } from './nutrition';
 
 const STORAGE_KEY = 'calorie-tracker:diary';
 const CURRENT_VERSION = 1;
@@ -13,6 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyCalorieGoal: 2000,
   usdaApiKey: '',
   jordanPriority: 'balanced',
+  profile: { ...DEFAULT_PROFILE },
 };
 
 export function defaultState(): DiaryState {
@@ -50,9 +52,14 @@ export function saveState(state: DiaryState): void {
 /** Coerce an arbitrary parsed object into a valid DiaryState. */
 function normalize(input: Partial<DiaryState>): DiaryState {
   const base = defaultState();
+  const settingsIn: Partial<Settings> = input.settings ?? {};
   return {
     version: CURRENT_VERSION,
-    settings: { ...base.settings, ...(input.settings ?? {}) },
+    settings: {
+      ...base.settings,
+      ...settingsIn,
+      profile: { ...base.settings.profile, ...(settingsIn.profile ?? {}) },
+    },
     days: input.days ?? {},
     favorites: input.favorites ?? [],
     recipes: input.recipes ?? [],

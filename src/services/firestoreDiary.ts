@@ -4,7 +4,7 @@
 
 import { doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { DiaryState } from '../types';
+import type { DiaryState, Settings } from '../types';
 import { defaultState } from '../storage';
 
 function userDoc(uid: string) {
@@ -15,9 +15,14 @@ function userDoc(uid: string) {
 /** Coerce a Firestore document payload into a valid DiaryState. */
 function normalize(data: Partial<DiaryState> | undefined): DiaryState {
   const base = defaultState();
+  const settingsIn: Partial<Settings> = data?.settings ?? {};
   return {
     version: base.version,
-    settings: { ...base.settings, ...(data?.settings ?? {}) },
+    settings: {
+      ...base.settings,
+      ...settingsIn,
+      profile: { ...base.settings.profile, ...(settingsIn.profile ?? {}) },
+    },
     days: data?.days ?? {},
     favorites: data?.favorites ?? [],
     recipes: data?.recipes ?? [],

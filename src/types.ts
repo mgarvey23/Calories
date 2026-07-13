@@ -1,3 +1,5 @@
+import type { Profile } from './nutrition';
+
 // ---------------------------------------------------------------------------
 // Core data model for the calorie tracker.
 //
@@ -92,6 +94,8 @@ export interface Settings {
   usdaApiKey: string;
   /** How "Jordan's Suggestion" ranks alternatives. */
   jordanPriority: JordanPriority;
+  /** Body profile used to recommend a calorie goal. */
+  profile: Profile;
 }
 
 /** The full persisted state: settings, saved foods/recipes, and every day. */
