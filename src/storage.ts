@@ -49,11 +49,16 @@ export function saveState(state: DiaryState): void {
   }
 }
 
-/** Coerce an arbitrary parsed object into a valid DiaryState. */
+/**
+ * Coerce an arbitrary parsed object into a valid DiaryState. Spreads the stored
+ * input first so any fields a newer version may have added are preserved (never
+ * dropped) even if this client doesn't know about them.
+ */
 function normalize(input: Partial<DiaryState>): DiaryState {
   const base = defaultState();
   const settingsIn: Partial<Settings> = input.settings ?? {};
   return {
+    ...input,
     version: CURRENT_VERSION,
     settings: {
       ...base.settings,

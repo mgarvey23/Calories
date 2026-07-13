@@ -16,7 +16,10 @@ function userDoc(uid: string) {
 function normalize(data: Partial<DiaryState> | undefined): DiaryState {
   const base = defaultState();
   const settingsIn: Partial<Settings> = data?.settings ?? {};
+  // Spread the stored data first so any unknown/newer fields are preserved
+  // rather than dropped when this client writes back.
   return {
+    ...(data ?? {}),
     version: base.version,
     settings: {
       ...base.settings,
