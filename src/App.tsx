@@ -7,6 +7,7 @@ import { Calendar } from './components/Calendar';
 import { DayView } from './components/DayView';
 import { SettingsPanel } from './components/SettingsPanel';
 import { RecipesPanel } from './components/RecipesPanel';
+import { ProfilePanel } from './components/ProfilePanel';
 import { SignIn } from './components/SignIn';
 import { todayISO } from './dateUtils';
 import type { DiaryApi, FoodItem, MealEntry, MealType } from './types';
@@ -92,6 +93,7 @@ function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: Rea
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [recipesOpen, setRecipesOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   function handleAdd(meal: MealType, food: FoodItem, quantity: number) {
     const entry: MealEntry = { id: crypto.randomUUID(), food, quantity };
@@ -104,6 +106,7 @@ function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: Rea
         <h1>Calorie Tracker</h1>
         <div className="header-actions">
           <button onClick={() => setSelectedDate(todayISO())}>Today</button>
+          <button onClick={() => setProfileOpen(true)}>Profile</button>
           <button onClick={() => setRecipesOpen(true)}>Recipes</button>
           <button onClick={() => setSettingsOpen(true)}>Settings</button>
           {headerExtra}
@@ -148,6 +151,14 @@ function TrackerView({ diary, headerExtra }: { diary: DiaryApi; headerExtra: Rea
           onSave={diary.saveRecipe}
           onDelete={diary.deleteRecipe}
           onClose={() => setRecipesOpen(false)}
+        />
+      )}
+
+      {profileOpen && (
+        <ProfilePanel
+          profile={diary.state.settings.profile}
+          onSave={diary.updateSettings}
+          onClose={() => setProfileOpen(false)}
         />
       )}
     </div>
