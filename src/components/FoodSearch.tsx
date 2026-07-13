@@ -8,6 +8,7 @@ import {
   type FoodSearchResult,
   type ScannedProduct,
 } from '../services/foodApi';
+import { getSharedFoodByBarcode, searchSharedFoods } from '../services/sharedFoods';
 import { ProductAnalysis } from './ProductAnalysis';
 
 // The barcode scanner pulls in a heavy decoding library; load it on demand so
@@ -26,6 +27,8 @@ interface FoodSearchProps {
   recipes: Recipe[];
   onAdd: (food: FoodItem, quantity: number) => void;
   onToggleFavorite: (food: FoodItem) => void;
+  /** Contribute a manually-entered food to the shared database (cloud only). */
+  onContributeFood?: (food: FoodItem) => void;
 }
 
 const SOURCE_LABELS: Record<FoodSearchResult['source'], string> = {
@@ -33,6 +36,7 @@ const SOURCE_LABELS: Record<FoodSearchResult['source'], string> = {
   usda: 'USDA',
   manual: 'Manual',
   recipe: 'Recipe',
+  community: 'Community',
 };
 
 /**
@@ -42,7 +46,7 @@ const SOURCE_LABELS: Record<FoodSearchResult['source'], string> = {
  * and, for scanned products, a pros/cons analysis with Jordan's Suggestion.
  */
 export function FoodSearch(props: FoodSearchProps) {
-  const { meal, usdaApiKey, jordanPriority, recent, favorites, recipes, onAdd, onToggleFavorite } = props;
+  const { meal, usdaApiKey, jordanPriority, recent, favorites, recipes, onAdd, onToggleFavorite, onContributeFood } = props;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodSearchResult[]>([]);
   const [scanned, setScanned] = useState<ScannedProduct | null>(null);
@@ -68,7 +72,12 @@ export function FoodSearch(props: FoodSearchProps) {
       setLoading(true);
       setError(null);
       try {
-        const found = await searchFoods(trimmed, { usdaApiKey, signal: controller.signal });
+        const [apiFound, shared] = await Promise.all([
+          searchFoods(trimmed, { usdaApiKey, signal: controller.signal }),
+          searchSharedFoods(trimmed, controller.signal),
+        ]);
+        // Community contributions first, then database results.
+        const found = [...shared, ...apiFound];
         setResults(found);
         if (found.length === 0) setError('No matches found. Try a different name or add it manually.');
       } catch (err) {
@@ -112,7 +121,16 @@ export function FoodSearch(props: FoodSearchProps) {
         setResults([product]);
         setScanned(product);
       } else {
-        setError(`No product found for barcode ${barcode}. Try searching or add it manually.`);
+        // Not in the food databases — check the community database (remembered
+        // manual entries) before giving up.
+        const shared = await getSharedFoodByBarcode(barcode);
+        if (shared) {
+          setResults([shared]);
+        } else {
+          setError(
+            `No product found for barcode ${barcode}. Add it manually — you can attach this barcode so it's remembered.`,
+          );
+        }
       }
     } catch {
       setError('Barcode lookup failed. Check your connection.');
@@ -227,6 +245,7 @@ export function FoodSearch(props: FoodSearchProps) {
         <ManualEntryForm
           onAdd={(food) => {
             onAdd(food, 1);
+            onContributeFood?.(food);
             setManualOpen(false);
             setQuery('');
           }}
@@ -284,6 +303,8 @@ function ManualEntryForm({ onAdd }: { onAdd: (food: FoodItem) => void }) {
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
   const [fat, setFat] = useState('');
+  const [barcode, setBarcode] = useState('');
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   // Parse an optional numeric macro field; blank stays undefined.
   const optionalNum = (v: string): number | undefined => {
@@ -298,6 +319,7 @@ function ManualEntryForm({ onAdd }: { onAdd: (food: FoodItem) => void }) {
     onAdd(toFoodItem({
       name: name.trim(),
       source: 'manual',
+      sourceId: barcode.trim() || undefined,
       servingSize: parseFloat(servingSize) || 1,
       servingUnit: servingUnit.trim() || 'serving',
       calories: Math.round(cals),
@@ -310,11 +332,26 @@ function ManualEntryForm({ onAdd }: { onAdd: (food: FoodItem) => void }) {
     setProtein('');
     setCarbs('');
     setFat('');
+    setBarcode('');
   }
 
   return (
     <form className="manual-form" onSubmit={submit}>
       <input placeholder="Food name" value={name} onChange={(e) => setName(e.target.value)} />
+      <div className="manual-barcode">
+        <button type="button" className="scan-button" onClick={() => setScannerOpen(true)}>
+          📷 {barcode ? 'Rescan' : 'Scan UPC'}
+        </button>
+        {barcode && <span className="barcode-tag">UPC {barcode} — will be remembered</span>}
+      </div>
+      {scannerOpen && (
+        <Suspense fallback={<div className="search-status">Loading scanner…</div>}>
+          <BarcodeScanner
+            onDetected={(code) => { setBarcode(code); setScannerOpen(false); }}
+            onClose={() => setScannerOpen(false)}
+          />
+        </Suspense>
+      )}
       <div className="manual-row">
         <input
           type="number" placeholder="Calories" value={calories}

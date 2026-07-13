@@ -24,13 +24,14 @@ interface MealSectionProps {
   onQuantityChange: (entryId: string, quantity: number) => void;
   onToggleFavorite: (food: FoodItem) => void;
   onShowAnalysis: (food: FoodItem) => void;
+  onContributeFood?: (food: FoodItem) => void;
 }
 
 /** One meal bucket for the selected day: its entries plus a search box. */
 export function MealSection(props: MealSectionProps) {
   const {
     meal, entries, usdaApiKey, jordanPriority, recent, favorites, recipes,
-    onAdd, onRemove, onQuantityChange, onToggleFavorite, onShowAnalysis,
+    onAdd, onRemove, onQuantityChange, onToggleFavorite, onShowAnalysis, onContributeFood,
   } = props;
   const total = entriesCalories(entries);
   const macros = roundMacros(entriesMacros(entries));
@@ -123,6 +124,7 @@ export function MealSection(props: MealSectionProps) {
         recipes={recipes}
         onAdd={onAdd}
         onToggleFavorite={onToggleFavorite}
+        onContributeFood={onContributeFood}
       />
     </section>
   );

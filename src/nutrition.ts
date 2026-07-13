@@ -30,6 +30,18 @@ export const DEFAULT_PROFILE: Profile = {
   units: 'imperial',
 };
 
+/**
+ * Default macro targets (grams) for a calorie goal using a 30% protein /
+ * 40% carbs / 30% fat split. Protein & carbs are 4 kcal/g, fat is 9 kcal/g.
+ */
+export function macroGoalsFromCalories(cal: number): { protein: number; carbs: number; fat: number } {
+  return {
+    protein: Math.round((cal * 0.3) / 4),
+    carbs: Math.round((cal * 0.4) / 4),
+    fat: Math.round((cal * 0.3) / 9),
+  };
+}
+
 export const ACTIVITY_FACTORS: Record<ActivityLevel, number> = {
   sedentary: 1.2,
   light: 1.375,
