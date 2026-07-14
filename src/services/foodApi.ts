@@ -234,6 +234,7 @@ const USDA_SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
 
 interface UsdaNutrient {
   nutrientName?: string;
+  unitName?: string;
   value?: number;
 }
 
@@ -252,9 +253,26 @@ function findNutrient(nutrients: UsdaNutrient[] | undefined, name: string): numb
   return match?.value;
 }
 
+/**
+ * Resolve energy in kcal. USDA foods often list energy twice — once in kcal and
+ * once in kJ (~4.184× larger) — so we must pick the kcal entry by its unit, not
+ * just the first "energy" match, or calories come out ~4× too high. Falls back
+ * to converting a kJ-only value.
+ */
+function usdaEnergyKcal(nutrients: UsdaNutrient[] | undefined): number | undefined {
+  const energies = (nutrients ?? []).filter(
+    (n) => n.nutrientName?.toLowerCase().includes('energy') && n.value !== undefined,
+  );
+  const kcal = energies.find((n) => n.unitName?.toUpperCase() === 'KCAL');
+  if (kcal) return kcal.value;
+  const kj = energies.find((n) => n.unitName?.toUpperCase() === 'KJ');
+  if (kj?.value !== undefined) return kj.value / 4.184;
+  return energies[0]?.value;
+}
+
 function usdaFoodToResult(f: UsdaFood): ScannedProduct | null {
   const name = f.description?.trim();
-  const kcal100 = findNutrient(f.foodNutrients, 'energy');
+  const kcal100 = usdaEnergyKcal(f.foodNutrients);
   if (!name || kcal100 === undefined) return null;
   const prot100 = findNutrient(f.foodNutrients, 'protein');
   const carb100 = findNutrient(f.foodNutrients, 'carbohydrate');
