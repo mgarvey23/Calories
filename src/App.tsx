@@ -208,6 +208,7 @@ function TrackerView({
               diary.updateEntryQuantity(selectedDate, meal, id, qty)
             }
             onToggleFavorite={diary.toggleFavorite}
+            onTogglePin={diary.togglePin}
             onContributeFood={onContributeFood}
             coaching={coaching}
           />
@@ -247,8 +248,10 @@ function TrackerView({
         <BodyScanPanel
           scans={diary.state.bodyScans ?? []}
           units={diary.state.settings.profile.units}
+          profile={diary.state.settings.profile}
           onAdd={diary.addBodyScan}
           onDelete={diary.deleteBodyScan}
+          onUpdateSettings={diary.updateSettings}
           onClose={() => setBodyOpen(false)}
         />
       )}

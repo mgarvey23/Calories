@@ -8,6 +8,7 @@ import {
   removeEntryOp,
   saveRecipeOp,
   toggleFavoriteOp,
+  togglePinOp,
   updateEntryQuantityOp,
   updateSettingsOp,
 } from '../diaryOps';
@@ -59,6 +60,10 @@ export function useLocalDiary() {
     (scanId: string) => setState((s) => deleteBodyScanOp(s, scanId)),
     [],
   );
+  const togglePin = useCallback(
+    (meal: MealType, food: FoodItem) => setState((s) => togglePinOp(s, meal, food)),
+    [],
+  );
 
   return {
     state,
@@ -72,5 +77,6 @@ export function useLocalDiary() {
     deleteRecipe,
     addBodyScan,
     deleteBodyScan,
+    togglePin,
   };
 }

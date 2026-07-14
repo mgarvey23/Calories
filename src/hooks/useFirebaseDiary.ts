@@ -8,6 +8,7 @@ import {
   removeEntryOp,
   saveRecipeOp,
   toggleFavoriteOp,
+  togglePinOp,
   updateEntryQuantityOp,
   updateSettingsOp,
 } from '../diaryOps';
@@ -104,6 +105,10 @@ export function useFirebaseDiary(uid: string) {
     (scanId: string) => mutate((s) => deleteBodyScanOp(s, scanId)),
     [mutate],
   );
+  const togglePin = useCallback(
+    (meal: MealType, food: FoodItem) => mutate((s) => togglePinOp(s, meal, food)),
+    [mutate],
+  );
 
   return {
     state,
@@ -118,5 +123,6 @@ export function useFirebaseDiary(uid: string) {
     deleteRecipe,
     addBodyScan,
     deleteBodyScan,
+    togglePin,
   };
 }

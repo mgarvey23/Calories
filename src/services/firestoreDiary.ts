@@ -31,6 +31,7 @@ export function normalizeDiary(data: Partial<DiaryState> | undefined): DiaryStat
     favorites: data?.favorites ?? [],
     recipes: data?.recipes ?? [],
     bodyScans: data?.bodyScans ?? [],
+    pinnedFoods: data?.pinnedFoods ?? {},
   };
 }
 

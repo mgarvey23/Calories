@@ -21,8 +21,8 @@ interface FoodSearchProps {
   meal: MealType;
   usdaApiKey: string;
   jordanPriority: JordanPriority;
-  /** Recently-logged foods offered as one-tap quick-adds when the box is empty. */
-  recent: FoodItem[];
+  /** Foods the user pinned to this meal, offered as one-tap quick-adds. */
+  pinned: FoodItem[];
   favorites: FoodItem[];
   recipes: Recipe[];
   onAdd: (food: FoodItem, quantity: number) => void;
@@ -46,7 +46,7 @@ const SOURCE_LABELS: Record<FoodSearchResult['source'], string> = {
  * and, for scanned products, a pros/cons analysis with Jordan's Suggestion.
  */
 export function FoodSearch(props: FoodSearchProps) {
-  const { meal, usdaApiKey, jordanPriority, recent, favorites, recipes, onAdd, onToggleFavorite, onContributeFood } = props;
+  const { meal, usdaApiKey, jordanPriority, pinned, favorites, recipes, onAdd, onToggleFavorite, onContributeFood } = props;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodSearchResult[]>([]);
   const [scanned, setScanned] = useState<ScannedProduct | null>(null);
@@ -107,7 +107,7 @@ export function FoodSearch(props: FoodSearchProps) {
 
   const showQuickAdds =
     query.trim().length < 2 && results.length === 0 && !scanned &&
-    (favorites.length > 0 || recipes.length > 0 || recent.length > 0);
+    (favorites.length > 0 || recipes.length > 0 || pinned.length > 0);
 
   async function handleBarcode(barcode: string) {
     setScannerOpen(false);
@@ -185,8 +185,8 @@ export function FoodSearch(props: FoodSearchProps) {
               </div>
             </div>
           )}
-          {recent.length > 0 && (
-            <ChipRow label="Recent" foods={recent} onPick={handleQuickAdd} />
+          {pinned.length > 0 && (
+            <ChipRow label="📌 Pinned" foods={pinned} onPick={handleQuickAdd} />
           )}
         </div>
       )}
