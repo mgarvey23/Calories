@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { Settings } from '../types';
+import type { DayLog, Macros, Settings } from '../types';
+import { TrendChart } from './TrendChart';
 import {
   ACTIVITY_LABELS,
   DEFAULT_PROFILE,
@@ -22,13 +23,17 @@ interface ProfilePanelProps {
   profile: Profile;
   onSave: (patch: Partial<Settings>) => void;
   onClose: () => void;
+  /** Logged days, for the progress trend chart. */
+  days?: Record<string, DayLog>;
+  /** Effective daily goals (coach target if pushed, else the user's own). */
+  goals?: { calories: number } & Macros;
 }
 
 const ACTIVITIES: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active', 'very_active'];
 const GOALS: GoalType[] = ['lose', 'maintain', 'gain'];
 
 /** Enter body stats and goal; get a recommended daily calorie target. */
-export function ProfilePanel({ profile, onSave, onClose }: ProfilePanelProps) {
+export function ProfilePanel({ profile, onSave, onClose, days, goals }: ProfilePanelProps) {
   const p = { ...DEFAULT_PROFILE, ...profile };
   const [units, setUnits] = useState<Units>(p.units);
   const [age, setAge] = useState(p.age ? String(p.age) : '');
@@ -93,6 +98,13 @@ export function ProfilePanel({ profile, onSave, onClose }: ProfilePanelProps) {
           <h2>Your profile</h2>
           <button className="remove-button" onClick={onClose} aria-label="Close">×</button>
         </header>
+
+        {days && goals && (
+          <section className="profile-progress">
+            <h3>Your progress</h3>
+            <TrendChart days={days} goals={goals} />
+          </section>
+        )}
 
         <div className="unit-toggle">
           <button className={units === 'imperial' ? 'active' : ''} onClick={() => setUnits('imperial')}>

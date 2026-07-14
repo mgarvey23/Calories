@@ -17,6 +17,19 @@ export function parseISODate(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/** ISO date `delta` days from `iso` (delta may be negative). */
+export function addDays(iso: string, delta: number): string {
+  const d = parseISODate(iso);
+  d.setDate(d.getDate() + delta);
+  return toISODate(d);
+}
+
+/** Compact "Mon D" label, e.g. "Jul 3". */
+export function formatShortDate(iso: string): string {
+  const d = parseISODate(iso);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 /** Days in the given month (0-indexed month). */
 export function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();

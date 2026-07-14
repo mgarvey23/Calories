@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import type { DiaryState, FoodItem, MealType } from '../types';
+import type { CoachingDoc, DiaryState, FoodItem, MealType } from '../types';
 import { MEAL_TYPES, dayCalories, dayMacros, emptyDay, roundMacros } from '../types';
 import { formatLongDate } from '../dateUtils';
 import { recentFoods } from '../foodHistory';
 import { MealSection } from './MealSection';
 import { CalorieRing } from './CalorieRing';
 import { MacroRings } from './MacroRings';
+import { CoachAdjustment } from './CoachAdjustment';
 import { EntryAnalysisModal } from './EntryAnalysisModal';
 
 interface DayViewProps {
@@ -16,14 +17,21 @@ interface DayViewProps {
   onQuantityChange: (meal: MealType, entryId: string, quantity: number) => void;
   onToggleFavorite: (food: FoodItem) => void;
   onContributeFood?: (food: FoodItem) => void;
+  /** Coach adjustments; a pushed target overrides the day's goal + macro goals. */
+  coaching?: CoachingDoc | null;
 }
 
 /** The selected day: a calorie summary against goal, then each meal. */
-export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onToggleFavorite, onContributeFood }: DayViewProps) {
+export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onToggleFavorite, onContributeFood, coaching }: DayViewProps) {
   const day = state.days[date] ?? emptyDay(date);
   const total = dayCalories(day);
   const macros = roundMacros(dayMacros(day));
-  const goal = state.settings.dailyCalorieGoal;
+  // A coach's pushed target takes precedence over the user's own goals.
+  const target = coaching?.target;
+  const goal = target?.calories ?? state.settings.dailyCalorieGoal;
+  const macroGoals = target
+    ? { protein: target.protein, carbs: target.carbs, fat: target.fat }
+    : state.settings.macroGoals;
   // Recents are per-meal: a food logged to breakfast only offers itself as a
   // quick-add under breakfast, not every meal.
   const recentByMeal = useMemo(() => {
@@ -48,9 +56,12 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
                 <strong>{goal}</strong><span>goal</span>
               </div>
             </div>
-            <MacroRings eaten={macros} goals={state.settings.macroGoals} />
+            <MacroRings eaten={macros} goals={macroGoals} />
           </div>
         </div>
+        {coaching && (coaching.target || (coaching.notes && coaching.notes.length > 0)) && (
+          <CoachAdjustment coaching={coaching} />
+        )}
       </div>
 
       {MEAL_TYPES.map((meal) => (

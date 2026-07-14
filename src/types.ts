@@ -100,6 +100,47 @@ export interface Settings {
   macroGoals: Macros;
 }
 
+// --- Coaching ("focus meeting") ---------------------------------------------
+
+/** A daily target a coach can push to a client; drives their rings when set. */
+export interface CoachTarget {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+/** One written note/suggestion from the coach to a client. */
+export interface CoachNote {
+  id: string;
+  text: string;
+  /** ISO timestamp the note was written. */
+  createdAt: string;
+}
+
+/**
+ * The coach's adjustments for one client, stored at `coaching/{clientUid}` —
+ * separate from the client's own `users/{uid}` doc (which the client rewrites
+ * wholesale) so coach writes are never clobbered.
+ */
+export interface CoachingDoc {
+  notes: CoachNote[];
+  /** Optional pushed daily target; when present it overrides the client's goals. */
+  target?: CoachTarget;
+  /** Display name of the coach, for the client-facing banner. */
+  coachName?: string;
+  /** ISO timestamp of the last coach edit. */
+  updatedAt: string;
+}
+
+/** A lightweight roster entry so the coach can enumerate clients by name. */
+export interface RosterEntry {
+  uid: string;
+  username: string;
+  /** ISO timestamp of the client's last activity/sign-in. */
+  updatedAt: string;
+}
+
 /** The full persisted state: settings, saved foods/recipes, and every day. */
 export interface DiaryState {
   version: number;
