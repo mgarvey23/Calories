@@ -1,12 +1,47 @@
 rules_version = '2';
 
 // Paste these rules into Firestore -> Rules in the Firebase console.
+//
+// COACH SETUP (one-time): to make an account the master/coach login, add a
+// document in the `coaches` collection whose ID is that account's Auth UID
+// (find it in Authentication -> Users). Only then can it read everyone's data.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Each user can read and write only their own diary document.
+    // True when the signed-in account has been flagged as a coach.
+    function isCoach() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/coaches/$(request.auth.uid));
+    }
+
+    // Each user owns their diary document; a coach may read (never write) any.
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null &&
+        (request.auth.uid == userId || isCoach());
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Lightweight roster so a coach can enumerate clients by name. Each client
+    // writes only its own entry; a coach can read/list all of them.
+    match /roster/{userId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == userId || isCoach());
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Coach adjustments for a client: the client reads its own; only a coach
+    // writes. Kept separate from the user doc so client writes don't clobber it.
+    match /coaching/{userId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == userId || isCoach());
+      allow write: if isCoach();
+    }
+
+    // Coach flags. An account may check its own flag; nobody writes from the
+    // client (bootstrap these in the Firebase console only).
+    match /coaches/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
     }
 
     // Shared community food database: any signed-in user can read and

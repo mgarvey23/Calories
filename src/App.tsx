@@ -1,17 +1,20 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth, usernameFromUser } from './auth';
 import { isFirebaseConfigured } from './firebase';
 import { useFirebaseDiary } from './hooks/useFirebaseDiary';
 import { useLocalDiary } from './hooks/useLocalDiary';
+import { useCoaching } from './hooks/useCoaching';
 import { Calendar } from './components/Calendar';
 import { DayView } from './components/DayView';
 import { SettingsPanel } from './components/SettingsPanel';
 import { RecipesPanel } from './components/RecipesPanel';
 import { ProfilePanel } from './components/ProfilePanel';
+import { CoachDashboard } from './components/CoachDashboard';
 import { SignIn } from './components/SignIn';
 import { saveSharedFood } from './services/sharedFoods';
+import { isCoachAccount, upsertRoster } from './services/coach';
 import { todayISO } from './dateUtils';
-import type { DiaryApi, FoodItem, MealEntry, MealType } from './types';
+import type { CoachingDoc, DiaryApi, FoodItem, MealEntry, MealType } from './types';
 
 const LOCAL_MODE_KEY = 'calorie-tracker:local-mode';
 
@@ -34,9 +37,7 @@ export default function App() {
     return <div className="app-loading">Loading…</div>;
   }
   if (user) {
-    return (
-      <CloudTracker uid={user.uid} label={usernameFromUser(user)} onSignOut={signOutUser} />
-    );
+    return <SignedIn uid={user.uid} label={usernameFromUser(user)} onSignOut={signOutUser} />;
   }
   if (localMode) {
     return <LocalTracker onSignIn={isFirebaseConfigured ? exitLocalMode : undefined} />;
@@ -44,9 +45,59 @@ export default function App() {
   return <SignIn onUseLocal={enableLocalMode} />;
 }
 
+/**
+ * Signed-in router. Checks once whether this account is a coach; coaches get a
+ * roster/master view they can toggle with their own personal tracker.
+ */
+function SignedIn({ uid, label, onSignOut }: { uid: string; label: string; onSignOut: () => void }) {
+  const [isCoach, setIsCoach] = useState(false);
+  const [view, setView] = useState<'coach' | 'me'>('coach');
+
+  useEffect(() => {
+    let alive = true;
+    isCoachAccount(uid).then((c) => alive && setIsCoach(c));
+    return () => { alive = false; };
+  }, [uid]);
+
+  if (isCoach && view === 'coach') {
+    return (
+      <CoachDashboard
+        coachName={label}
+        onOpenMyTracker={() => setView('me')}
+        onSignOut={onSignOut}
+      />
+    );
+  }
+  return (
+    <CloudTracker
+      uid={uid}
+      label={label}
+      onSignOut={onSignOut}
+      onBackToCoach={isCoach ? () => setView('coach') : undefined}
+    />
+  );
+}
+
 /** Cloud-synced path: waits for the Firestore subscription, then renders. */
-function CloudTracker({ uid, label, onSignOut }: { uid: string; label: string; onSignOut: () => void }) {
+function CloudTracker({
+  uid,
+  label,
+  onSignOut,
+  onBackToCoach,
+}: {
+  uid: string;
+  label: string;
+  onSignOut: () => void;
+  onBackToCoach?: () => void;
+}) {
   const diary = useFirebaseDiary(uid);
+  const coaching = useCoaching(uid);
+
+  // Keep this client on the coach's roster (best-effort, no-op in local mode).
+  useEffect(() => {
+    void upsertRoster(uid, label);
+  }, [uid, label]);
+
   if (diary.error && !diary.state) {
     return (
       <div className="app-loading">
@@ -63,9 +114,11 @@ function CloudTracker({ uid, label, onSignOut }: { uid: string; label: string; o
   return (
     <TrackerView
       diary={diary as DiaryApi}
+      coaching={coaching}
       onContributeFood={(food) => saveSharedFood(food, uid)}
       headerExtra={
         <>
+          {onBackToCoach && <button onClick={onBackToCoach}>Coach view</button>}
           <span className="user-label" title={label}>{label}</span>
           <button onClick={onSignOut}>Sign out</button>
         </>
@@ -95,15 +148,26 @@ function TrackerView({
   diary,
   headerExtra,
   onContributeFood,
+  coaching,
 }: {
   diary: DiaryApi;
   headerExtra: ReactNode;
   onContributeFood?: (food: FoodItem) => void;
+  coaching?: CoachingDoc | null;
 }) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [recipesOpen, setRecipesOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  // Effective daily goals: a coach's pushed target overrides the user's own.
+  const t = coaching?.target;
+  const effectiveGoals = t
+    ? { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat }
+    : {
+        calories: diary.state.settings.dailyCalorieGoal,
+        ...diary.state.settings.macroGoals,
+      };
 
   function handleAdd(meal: MealType, food: FoodItem, quantity: number) {
     const entry: MealEntry = { id: crypto.randomUUID(), food, quantity };
@@ -142,6 +206,7 @@ function TrackerView({
             }
             onToggleFavorite={diary.toggleFavorite}
             onContributeFood={onContributeFood}
+            coaching={coaching}
           />
         </div>
       </main>
@@ -170,6 +235,8 @@ function TrackerView({
           profile={diary.state.settings.profile}
           onSave={diary.updateSettings}
           onClose={() => setProfileOpen(false)}
+          days={diary.state.days}
+          goals={effectiveGoals}
         />
       )}
     </div>

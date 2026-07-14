@@ -13,7 +13,7 @@ function userDoc(uid: string) {
 }
 
 /** Coerce a Firestore document payload into a valid DiaryState. */
-function normalize(data: Partial<DiaryState> | undefined): DiaryState {
+export function normalizeDiary(data: Partial<DiaryState> | undefined): DiaryState {
   const base = defaultState();
   const settingsIn: Partial<Settings> = data?.settings ?? {};
   // Spread the stored data first so any unknown/newer fields are preserved
@@ -54,7 +54,7 @@ export function subscribeDiary(
       if (snap.metadata.hasPendingWrites) return;
 
       if (snap.exists()) {
-        onData(normalize(snap.data() as Partial<DiaryState>));
+        onData(normalizeDiary(snap.data() as Partial<DiaryState>));
       } else if (!snap.metadata.fromCache) {
         // Only seed a new document once the server has confirmed none exists,
         // to avoid overwriting server data during an offline-first load.
