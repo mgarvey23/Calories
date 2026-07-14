@@ -305,6 +305,41 @@ function ManualEntryForm({ onAdd }: { onAdd: (food: FoodItem) => void }) {
   const [fat, setFat] = useState('');
   const [barcode, setBarcode] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState<string | null>(null);
+  const labelInputRef = useRef<HTMLInputElement>(null);
+
+  // Read a photo of the Nutrition Facts panel and pre-fill whatever fields we
+  // can recognise. Runs entirely in the browser (Tesseract, lazy-loaded).
+  async function handleLabelPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    setOcrStatus('Reading label…');
+    try {
+      const { recognizeLabel, parseNutritionLabel } = await import('../services/labelOcr');
+      const text = await recognizeLabel(file, (p) =>
+        setOcrStatus(`Reading label… ${Math.round(p * 100)}%`),
+      );
+      const parsed = parseNutritionLabel(text);
+      const filled: string[] = [];
+      if (parsed.calories !== undefined) { setCalories(String(parsed.calories)); filled.push('calories'); }
+      if (parsed.protein !== undefined) { setProtein(String(parsed.protein)); filled.push('protein'); }
+      if (parsed.carbs !== undefined) { setCarbs(String(parsed.carbs)); filled.push('carbs'); }
+      if (parsed.fat !== undefined) { setFat(String(parsed.fat)); filled.push('fat'); }
+      if (parsed.servingSize !== undefined) {
+        setServingSize(String(parsed.servingSize));
+        filled.push('serving size');
+      }
+      if (parsed.servingUnit) setServingUnit(parsed.servingUnit);
+      setOcrStatus(
+        filled.length > 0
+          ? `Filled ${filled.join(', ')} — double-check, then add.`
+          : "Couldn't read the label. Try a clearer, straight-on photo or enter it by hand.",
+      );
+    } catch {
+      setOcrStatus('Label scan failed. Enter the values by hand.');
+    }
+  }
 
   // Parse an optional numeric macro field; blank stays undefined.
   const optionalNum = (v: string): number | undefined => {
@@ -342,8 +377,25 @@ function ManualEntryForm({ onAdd }: { onAdd: (food: FoodItem) => void }) {
         <button type="button" className="scan-button" onClick={() => setScannerOpen(true)}>
           📷 {barcode ? 'Rescan' : 'Scan UPC'}
         </button>
+        <button
+          type="button"
+          className="scan-button"
+          onClick={() => labelInputRef.current?.click()}
+          title="Take a photo of the Nutrition Facts label to auto-fill"
+        >
+          🏷️ Scan label
+        </button>
         {barcode && <span className="barcode-tag">UPC {barcode} — will be remembered</span>}
       </div>
+      <input
+        ref={labelInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={handleLabelPhoto}
+      />
+      {ocrStatus && <div className="search-status">{ocrStatus}</div>}
       {scannerOpen && (
         <Suspense fallback={<div className="search-status">Loading scanner…</div>}>
           <BarcodeScanner
