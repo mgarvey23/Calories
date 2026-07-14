@@ -867,3 +867,14 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
   .review-day-detail { flex: 1; min-width: 0; }
   .coach-target-grid { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* Body scans --------------------------------------------------------------- */
+.delta-down { color: var(--accent-strong); font-weight: 600; }
+.delta-up { color: var(--over); font-weight: 600; }
+.scan-form-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.scan-list { list-style: none; padding: 0; margin: 1rem 0 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.scan-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.scan-row-main { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.scan-metrics { display: flex; flex-wrap: wrap; gap: 0.3rem 0.75rem; font-size: 0.82rem; color: var(--muted); }
+.scan-metrics span { color: var(--text); }
+.scan-note { font-size: 0.78rem; color: var(--muted); font-style: italic; }

@@ -133,6 +133,28 @@ export interface CoachingDoc {
   updatedAt: string;
 }
 
+/**
+ * One body-composition scan (e.g. from an Evolt 360), logged by date. Mass
+ * fields are stored canonically in kilograms; the UI converts for display based
+ * on the user's unit preference. Every metric is optional so a partial scan (or
+ * a partial OCR read) still saves.
+ */
+export interface BodyScan {
+  id: string;
+  /** ISO date "YYYY-MM-DD" of the scan. */
+  date: string;
+  /** Body weight in kilograms. */
+  weightKg?: number;
+  /** Body fat percentage. */
+  bodyFatPct?: number;
+  /** Skeletal muscle mass in kilograms. */
+  muscleMassKg?: number;
+  /** Measured basal metabolic rate, kcal/day. */
+  bmr?: number;
+  /** Optional free-text note. */
+  note?: string;
+}
+
 /** A lightweight roster entry so the coach can enumerate clients by name. */
 export interface RosterEntry {
   uid: string;
@@ -150,6 +172,8 @@ export interface DiaryState {
   favorites: FoodItem[];
   /** User-created recipes. */
   recipes: Recipe[];
+  /** Body-composition scans over time (e.g. Evolt 360). */
+  bodyScans: BodyScan[];
 }
 
 // --- Derived helpers -------------------------------------------------------
@@ -277,4 +301,6 @@ export interface DiaryApi {
   toggleFavorite: (food: FoodItem) => void;
   saveRecipe: (recipe: Recipe) => void;
   deleteRecipe: (recipeId: string) => void;
+  addBodyScan: (scan: BodyScan) => void;
+  deleteBodyScan: (scanId: string) => void;
 }
