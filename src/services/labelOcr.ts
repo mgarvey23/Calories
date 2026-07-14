@@ -1,10 +1,10 @@
-// Reads a Nutrition Facts label from a photo using in-browser OCR (Tesseract),
-// then parses the recognised text into the fields the manual-entry form needs:
-// serving size, calories, and the protein/carbs/fat macros.
+// Reads a photo using in-browser OCR (Tesseract) and parses it. Two parsers
+// share the OCR pass: a Nutrition Facts label (serving/calories/macros) and an
+// Evolt 360 body-composition result sheet (weight/body fat/muscle/BMR).
 //
 // Tesseract is heavy (it downloads a language model on first use), so it is
-// imported lazily — only when the user actually scans a label — to keep it out
-// of the initial bundle.
+// imported lazily — only when the user actually scans — to keep it out of the
+// initial bundle.
 
 /** What we could pull off a label. Every field is optional — OCR is fuzzy. */
 export interface ParsedLabel {
@@ -14,6 +14,14 @@ export interface ParsedLabel {
   fat?: number;
   servingSize?: number;
   servingUnit?: string;
+}
+
+/** What we could pull off an Evolt body-scan sheet. Masses are in kilograms. */
+export interface ParsedBodyScan {
+  weightKg?: number;
+  bodyFatPct?: number;
+  muscleMassKg?: number;
+  bmr?: number;
 }
 
 /** Run OCR on an image file and return the raw recognised text. */
@@ -36,6 +44,11 @@ export async function recognizeLabel(
   } finally {
     await worker.terminate();
   }
+}
+
+/** Round to one decimal place. */
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
 }
 
 /** First capture group parsed as a float, or undefined if no match. */
@@ -90,4 +103,58 @@ export function parseNutritionLabel(text: string): ParsedLabel {
   }
 
   return { calories, protein, carbs, fat, servingSize, servingUnit };
+}
+
+/** Parse a number that may use a comma as either a thousands or decimal mark. */
+function parseLoose(raw: string): number {
+  // "1,850" (comma + exactly 3 digits) is a thousands separator; strip it.
+  // "18,9" (European decimal) becomes a dot.
+  const s = /,\d{3}(?:\D|$)/.test(raw + ' ') ? raw.replace(/,/g, '') : raw.replace(',', '.');
+  return parseFloat(s);
+}
+
+/**
+ * Number after a keyword, tolerating an intervening "%"/":" and OCR noise. Also
+ * accepts "lb" commonly misread by OCR as "Ib" / "1b".
+ */
+function labelledNum(text: string, keyword: RegExp): { value: number; unit?: string } | undefined {
+  const re = new RegExp(
+    keyword.source + String.raw`[^0-9]{0,12}(\d{1,4}(?:[.,]\d+)?)\s*(kg|lbs|lb|ib|1b|%|kcal|cal)?`,
+    'i',
+  );
+  const m = text.match(re);
+  if (!m) return undefined;
+  const value = parseLoose(m[1]);
+  if (!Number.isFinite(value)) return undefined;
+  let unit = m[2]?.toLowerCase();
+  if (unit === 'ib' || unit === '1b') unit = 'lb'; // OCR misreads of "lb"
+  return { value, unit };
+}
+
+/**
+ * Parse an Evolt 360 result sheet into structured body-composition values.
+ * Masses are normalised to kilograms (a value tagged "lb" is converted).
+ * Everything is optional — OCR on a photographed sheet is imperfect.
+ */
+export function parseEvoltScan(text: string): ParsedBodyScan {
+  const flat = text.replace(/\s+/g, ' ');
+  const toKg = (v: number, unit?: string) => (unit === 'lb' || unit === 'lbs' ? v / 2.20462 : v);
+
+  let weightKg: number | undefined;
+  const w = labelledNum(flat, /\bweight\b/) ?? labelledNum(flat, /body\s*weight/);
+  if (w) weightKg = round1(toKg(w.value, w.unit));
+
+  let bodyFatPct: number | undefined;
+  const bf = labelledNum(flat, /body\s*fat(?:\s*percentage)?/) ?? labelledNum(flat, /\bfat\s*%/);
+  if (bf && bf.value > 0 && bf.value < 80) bodyFatPct = bf.value;
+
+  let muscleMassKg: number | undefined;
+  const mm = labelledNum(flat, /skeletal\s*muscle\s*mass/) ?? labelledNum(flat, /muscle\s*mass/);
+  if (mm) muscleMassKg = round1(toKg(mm.value, mm.unit));
+
+  let bmr: number | undefined;
+  const b = labelledNum(flat, /\bbmr\b/) ?? labelledNum(flat, /basal\s*metabolic\s*rate/);
+  if (b && b.value >= 500 && b.value <= 5000) bmr = Math.round(b.value);
+
+  return { weightKg, bodyFatPct, muscleMassKg, bmr };
 }

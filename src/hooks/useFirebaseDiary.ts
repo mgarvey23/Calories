@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DiaryState, FoodItem, MealEntry, MealType, Recipe, Settings } from '../types';
+import type { BodyScan, DiaryState, FoodItem, MealEntry, MealType, Recipe, Settings } from '../types';
 import {
+  addBodyScanOp,
   addEntryOp,
+  deleteBodyScanOp,
   deleteRecipeOp,
   removeEntryOp,
   saveRecipeOp,
@@ -97,6 +99,11 @@ export function useFirebaseDiary(uid: string) {
     (recipeId: string) => mutate((s) => deleteRecipeOp(s, recipeId)),
     [mutate],
   );
+  const addBodyScan = useCallback((scan: BodyScan) => mutate((s) => addBodyScanOp(s, scan)), [mutate]);
+  const deleteBodyScan = useCallback(
+    (scanId: string) => mutate((s) => deleteBodyScanOp(s, scanId)),
+    [mutate],
+  );
 
   return {
     state,
@@ -109,5 +116,7 @@ export function useFirebaseDiary(uid: string) {
     toggleFavorite,
     saveRecipe,
     deleteRecipe,
+    addBodyScan,
+    deleteBodyScan,
   };
 }

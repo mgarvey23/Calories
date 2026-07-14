@@ -2,7 +2,7 @@
 // returns a new one. Both the local and the Firebase-backed hooks build on
 // these so the mutation logic lives in exactly one place.
 
-import type { DiaryState, FoodItem, MealEntry, MealType, Recipe, Settings } from './types';
+import type { BodyScan, DiaryState, FoodItem, MealEntry, MealType, Recipe, Settings } from './types';
 import { emptyDay, foodKey } from './types';
 
 export function addEntryOp(
@@ -94,4 +94,16 @@ export function saveRecipeOp(state: DiaryState, recipe: Recipe): DiaryState {
 
 export function deleteRecipeOp(state: DiaryState, recipeId: string): DiaryState {
   return { ...state, recipes: state.recipes.filter((r) => r.id !== recipeId) };
+}
+
+/** Insert or replace a body scan (by id), keeping the list sorted newest-first. */
+export function addBodyScanOp(state: DiaryState, scan: BodyScan): DiaryState {
+  const existing = state.bodyScans ?? [];
+  const others = existing.filter((s) => s.id !== scan.id);
+  const next = [scan, ...others].sort((a, b) => b.date.localeCompare(a.date));
+  return { ...state, bodyScans: next };
+}
+
+export function deleteBodyScanOp(state: DiaryState, scanId: string): DiaryState {
+  return { ...state, bodyScans: (state.bodyScans ?? []).filter((s) => s.id !== scanId) };
 }

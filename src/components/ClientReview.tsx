@@ -19,6 +19,7 @@ import { Calendar } from './Calendar';
 import { CalorieRing } from './CalorieRing';
 import { MacroRings } from './MacroRings';
 import { TrendChart } from './TrendChart';
+import { BodyScanChart } from './BodyScanChart';
 
 interface ClientReviewProps {
   client: RosterEntry;
@@ -101,6 +102,13 @@ export function ClientReview({ client, coachName, onBack }: ClientReviewProps) {
         <h3>Progress</h3>
         <TrendChart days={state.days} goals={goals} />
       </section>
+
+      {state.bodyScans && state.bodyScans.length > 0 && (
+        <section className="review-card">
+          <h3>Body composition</h3>
+          <BodyScanChart scans={state.bodyScans} units={state.settings.profile.units} />
+        </section>
+      )}
 
       <CoachEditor
         clientUid={client.uid}

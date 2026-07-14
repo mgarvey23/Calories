@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { DiaryState, FoodItem, MealEntry, MealType, Recipe, Settings } from '../types';
+import type { BodyScan, DiaryState, FoodItem, MealEntry, MealType, Recipe, Settings } from '../types';
 import {
+  addBodyScanOp,
   addEntryOp,
+  deleteBodyScanOp,
   deleteRecipeOp,
   removeEntryOp,
   saveRecipeOp,
@@ -52,6 +54,11 @@ export function useLocalDiary() {
     (recipeId: string) => setState((s) => deleteRecipeOp(s, recipeId)),
     [],
   );
+  const addBodyScan = useCallback((scan: BodyScan) => setState((s) => addBodyScanOp(s, scan)), []);
+  const deleteBodyScan = useCallback(
+    (scanId: string) => setState((s) => deleteBodyScanOp(s, scanId)),
+    [],
+  );
 
   return {
     state,
@@ -63,5 +70,7 @@ export function useLocalDiary() {
     toggleFavorite,
     saveRecipe,
     deleteRecipe,
+    addBodyScan,
+    deleteBodyScan,
   };
 }

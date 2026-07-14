@@ -9,6 +9,7 @@ import { DayView } from './components/DayView';
 import { SettingsPanel } from './components/SettingsPanel';
 import { RecipesPanel } from './components/RecipesPanel';
 import { ProfilePanel } from './components/ProfilePanel';
+import { BodyScanPanel } from './components/BodyScanPanel';
 import { CoachDashboard } from './components/CoachDashboard';
 import { SignIn } from './components/SignIn';
 import { saveSharedFood } from './services/sharedFoods';
@@ -159,6 +160,7 @@ function TrackerView({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [recipesOpen, setRecipesOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [bodyOpen, setBodyOpen] = useState(false);
 
   // Effective daily goals: a coach's pushed target overrides the user's own.
   const t = coaching?.target;
@@ -181,6 +183,7 @@ function TrackerView({
         <div className="header-actions">
           <button onClick={() => setSelectedDate(todayISO())}>Today</button>
           <button onClick={() => setProfileOpen(true)}>Profile</button>
+          <button onClick={() => setBodyOpen(true)}>Body</button>
           <button onClick={() => setRecipesOpen(true)}>Recipes</button>
           <button onClick={() => setSettingsOpen(true)}>Settings</button>
           {headerExtra}
@@ -237,6 +240,16 @@ function TrackerView({
           onClose={() => setProfileOpen(false)}
           days={diary.state.days}
           goals={effectiveGoals}
+        />
+      )}
+
+      {bodyOpen && (
+        <BodyScanPanel
+          scans={diary.state.bodyScans ?? []}
+          units={diary.state.settings.profile.units}
+          onAdd={diary.addBodyScan}
+          onDelete={diary.deleteBodyScan}
+          onClose={() => setBodyOpen(false)}
         />
       )}
     </div>

@@ -30,6 +30,7 @@ export function normalizeDiary(data: Partial<DiaryState> | undefined): DiaryStat
     days: data?.days ?? {},
     favorites: data?.favorites ?? [],
     recipes: data?.recipes ?? [],
+    bodyScans: data?.bodyScans ?? [],
   };
 }
 
