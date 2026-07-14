@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { BodyScan, Settings } from '../types';
+import type { BodyScan, Settings, SupplementGoal } from '../types';
 import {
   kgToLb,
   lbToKg,
@@ -8,6 +8,13 @@ import {
   type Profile,
   type Units,
 } from '../nutrition';
+import {
+  SCAN_FIELDS,
+  SCAN_GROUPS,
+  SEGMENTS,
+  fieldUnit,
+  toCanonical,
+} from '../bodyScanFields';
 import { formatShortDate, todayISO } from '../dateUtils';
 import { BodyScanChart } from './BodyScanChart';
 
@@ -21,20 +28,53 @@ interface BodyScanPanelProps {
   onClose: () => void;
 }
 
+const SUPPLEMENT_GOALS: { value: SupplementGoal; label: string }[] = [
+  { value: 'fat_loss', label: 'Fat loss' },
+  { value: 'muscle_gain', label: 'Muscle gain' },
+  { value: 'optimal_health', label: 'Optimal health' },
+];
+
+const numOr = (s: string | undefined): number | undefined => {
+  const n = parseFloat(s ?? '');
+  return Number.isFinite(n) ? n : undefined;
+};
+
 /**
- * Track body-composition scans (e.g. Evolt 360) over time: a trend chart, a list
- * of past scans, and an add form that can be filled by hand or by photographing
- * the result sheet (OCR). Masses are entered/shown in the user's unit but stored
- * canonically in kilograms.
+ * Track body-composition scans (e.g. Evolt 360) over time. Captures the full
+ * Evolt sheet — laid out in the same sections — with a trend chart for any
+ * metric, a "use these" button for Evolt's own calorie/macro recommendation,
+ * and a best-effort photo (OCR) that pre-fills whatever it can read.
  */
 export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdateSettings, onClose }: BodyScanPanelProps) {
-  const imperial = units === 'imperial';
-  const massUnit = imperial ? 'lb' : 'kg';
+  const massUnit = units === 'imperial' ? 'lb' : 'kg';
 
-  // Most recent scan that carries a measured BMR — offer to base the goal on it.
+  // All numeric inputs live in one string map keyed by field id (segmental keys
+  // look like "seg_leftArm_lean"). Non-numeric bits get their own state.
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [date, setDate] = useState(todayISO());
+  const [note, setNote] = useState('');
+  const [upperLower, setUpperLower] = useState<'' | 'balanced' | 'unbalanced'>('');
+  const [leftRight, setLeftRight] = useState<'' | 'balanced' | 'unbalanced'>('');
+  const [suppGoal, setSuppGoal] = useState<SupplementGoal | ''>('');
+  const [supplements, setSupplements] = useState('');
+  const [ocrStatus, setOcrStatus] = useState<string | null>(null);
+  const [goalStatus, setGoalStatus] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const setVal = (k: string, v: string) => setVals((p) => ({ ...p, [k]: v }));
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // --- Apply Evolt's own recommendations to the daily goal -------------------
   const latestBmr = scans.find((s) => s.bmr != null)?.bmr;
   const bmrGoal = latestBmr != null ? recommendedFromBmr(latestBmr, profile) : null;
-  const [goalStatus, setGoalStatus] = useState<string | null>(null);
+  const recScan = scans.find(
+    (s) => s.recCaloriesHigh != null || s.recCaloriesLow != null || s.recProteinG != null,
+  );
 
   function applyBmrGoal() {
     if (bmrGoal == null) return;
@@ -42,88 +82,105 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
     setGoalStatus(`Daily goal set to ${bmrGoal} kcal from your measured BMR.`);
   }
 
-  const [date, setDate] = useState(todayISO());
-  const [weight, setWeight] = useState('');
-  const [bodyFat, setBodyFat] = useState('');
-  const [muscle, setMuscle] = useState('');
-  const [bmr, setBmr] = useState('');
-  const [note, setNote] = useState('');
-  const [ocrStatus, setOcrStatus] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  // Close on Escape, so there's always a way out of the panel.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  const numOr = (s: string): number | undefined => {
-    const n = parseFloat(s);
-    return Number.isFinite(n) ? n : undefined;
-  };
-  // Convert a mass typed in the display unit to canonical kg.
-  const toKg = (s: string): number | undefined => {
-    const n = numOr(s);
-    if (n === undefined) return undefined;
-    return imperial ? lbToKg(n) : n;
-  };
-  // Canonical kg -> a display-unit string for prefilling inputs.
-  const fromKg = (kg: number): string =>
-    String(imperial ? Math.round(kgToLb(kg) * 10) / 10 : Math.round(kg * 10) / 10);
-
-  function reset() {
-    setWeight(''); setBodyFat(''); setMuscle(''); setBmr(''); setNote('');
-    setDate(todayISO()); setOcrStatus(null);
+  function applyEvoltMacros() {
+    if (!recScan) return;
+    const cal =
+      recScan.recCaloriesLow != null && recScan.recCaloriesHigh != null
+        ? Math.round((recScan.recCaloriesLow + recScan.recCaloriesHigh) / 2)
+        : recScan.recCaloriesHigh ?? recScan.recCaloriesLow;
+    if (cal == null) return;
+    const macros =
+      recScan.recProteinG != null && recScan.recCarbsG != null && recScan.recFatG != null
+        ? { protein: recScan.recProteinG, carbs: recScan.recCarbsG, fat: recScan.recFatG }
+        : macroGoalsFromCalories(cal);
+    onUpdateSettings({ dailyCalorieGoal: cal, macroGoals: macros });
+    setGoalStatus(`Daily goal set to ${cal} kcal from Evolt's recommendation.`);
   }
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const scan: BodyScan = {
-      id: crypto.randomUUID(),
-      date,
-      weightKg: toKg(weight),
-      bodyFatPct: numOr(bodyFat),
-      muscleMassKg: toKg(muscle),
-      bmr: numOr(bmr) !== undefined ? Math.round(numOr(bmr)!) : undefined,
-      note: note.trim() || undefined,
-    };
-    // Require at least one metric.
-    if (scan.weightKg == null && scan.bodyFatPct == null && scan.muscleMassKg == null && scan.bmr == null) {
-      setOcrStatus('Enter at least one measurement.');
-      return;
-    }
-    onAdd(scan);
-    reset();
-  }
-
+  // --- Photo OCR (best-effort pre-fill) --------------------------------------
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setOcrStatus('Reading scan sheet…');
+    setOcrStatus('Reading sheet… (this reads what it can — you fill the rest)');
     try {
       const { recognizeLabel, parseEvoltScan } = await import('../services/labelOcr');
-      const text = await recognizeLabel(file, (p) => setOcrStatus(`Reading scan sheet… ${Math.round(p * 100)}%`));
+      const text = await recognizeLabel(file, (p) =>
+        setOcrStatus(`Reading sheet… ${Math.round(p * 100)}% (fill anything it misses)`));
       const parsed = parseEvoltScan(text);
       const filled: string[] = [];
-      if (parsed.weightKg != null) { setWeight(fromKg(parsed.weightKg)); filled.push('weight'); }
-      if (parsed.bodyFatPct != null) { setBodyFat(String(parsed.bodyFatPct)); filled.push('body fat'); }
-      if (parsed.muscleMassKg != null) { setMuscle(fromKg(parsed.muscleMassKg)); filled.push('muscle'); }
-      if (parsed.bmr != null) { setBmr(String(parsed.bmr)); filled.push('BMR'); }
+      for (const def of SCAN_FIELDS) {
+        const v = parsed[def.key];
+        // Values come back as printed on the sheet, matching the display-unit inputs.
+        if (v != null) { setVal(def.key, String(v)); filled.push(def.label.toLowerCase()); }
+      }
+      if (parsed.recCaloriesLow != null) setVal('rec_cal_low', String(parsed.recCaloriesLow));
+      if (parsed.recCaloriesHigh != null) setVal('rec_cal_high', String(parsed.recCaloriesHigh));
+      if (parsed.recProteinG != null) setVal('rec_protein', String(parsed.recProteinG));
+      if (parsed.recCarbsG != null) setVal('rec_carbs', String(parsed.recCarbsG));
+      if (parsed.recFatG != null) setVal('rec_fat', String(parsed.recFatG));
       setOcrStatus(
         filled.length > 0
-          ? `Filled ${filled.join(', ')} — double-check, then save.`
-          : "Couldn't read the sheet. Try a clearer photo or enter the numbers by hand.",
+          ? `Read ${filled.length} field${filled.length > 1 ? 's' : ''} (${filled.slice(0, 4).join(', ')}${filled.length > 4 ? '…' : ''}). Check them and fill the rest by hand.`
+          : "Couldn't read much from the photo — the sheet is dense, so just enter the numbers below (it's quick).",
       );
     } catch {
-      setOcrStatus('Scan read failed. Enter the numbers by hand.');
+      setOcrStatus('Photo read failed — enter the numbers below.');
     }
+  }
+
+  // --- Save ------------------------------------------------------------------
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const scan: BodyScan = { id: crypto.randomUUID(), date };
+
+    for (const def of SCAN_FIELDS) {
+      const n = numOr(vals[def.key]);
+      if (n != null) (scan[def.key] as number) = toCanonical(n, def, units);
+    }
+
+    // Segmental (masses in the display unit -> kg).
+    const toKg = (s?: string) => {
+      const n = numOr(s);
+      if (n == null) return undefined;
+      return units === 'imperial' ? lbToKg(n) : n;
+    };
+    const segmental: NonNullable<BodyScan['segmental']> = {};
+    for (const seg of SEGMENTS) {
+      const lean = toKg(vals[`seg_${seg.key}_lean`]);
+      const fat = toKg(vals[`seg_${seg.key}_fat`]);
+      if (lean != null || fat != null) segmental[seg.key] = { leanKg: lean, fatKg: fat };
+    }
+    if (Object.keys(segmental).length > 0) scan.segmental = segmental;
+    if (upperLower) scan.upperLowerBalanced = upperLower === 'balanced';
+    if (leftRight) scan.leftRightBalanced = leftRight === 'balanced';
+
+    // Evolt nutrition recommendation.
+    scan.recCaloriesLow = numOr(vals.rec_cal_low);
+    scan.recCaloriesHigh = numOr(vals.rec_cal_high);
+    scan.recProteinG = numOr(vals.rec_protein);
+    scan.recCarbsG = numOr(vals.rec_carbs);
+    scan.recFatG = numOr(vals.rec_fat);
+
+    if (suppGoal) scan.supplementGoal = suppGoal;
+    const supps = supplements.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+    if (supps.length) scan.supplements = supps;
+    if (note.trim()) scan.note = note.trim();
+
+    // Require at least one metric.
+    const hasAny = SCAN_FIELDS.some((d) => scan[d.key] != null)
+      || scan.segmental != null
+      || [scan.recCaloriesLow, scan.recCaloriesHigh, scan.recProteinG, scan.recCarbsG, scan.recFatG].some((v) => v != null);
+    if (!hasAny) { setOcrStatus('Enter at least one measurement.'); return; }
+
+    onAdd(scan);
+    setVals({}); setNote(''); setSupplements(''); setSuppGoal('');
+    setUpperLower(''); setLeftRight(''); setDate(todayISO()); setOcrStatus('Saved.');
   }
 
   return (
     <div className="settings-overlay" onClick={onClose}>
-      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="settings-panel scan-panel" onClick={(e) => e.stopPropagation()}>
         <header className="settings-header">
           <h2>Body scans</h2>
           <button className="remove-button" onClick={onClose} aria-label="Close">×</button>
@@ -135,27 +192,33 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
           </section>
         )}
 
-        {bmrGoal != null && (
+        {(bmrGoal != null || recScan) && (
           <div className="bmr-card">
             <div className="bmr-card-main">
-              <span>Measured BMR <strong>{latestBmr}</strong> kcal</span>
-              <span className="bmr-sub">
-                → suggests a <strong>{bmrGoal}</strong> kcal/day goal for your activity &amp; target
-              </span>
+              <span className="bmr-sub">Set your daily goal from your scan:</span>
+              <div className="apply-goal-row">
+                {bmrGoal != null && (
+                  <button type="button" className="primary-button small" onClick={applyBmrGoal}>
+                    From BMR ({bmrGoal})
+                  </button>
+                )}
+                {recScan && (
+                  <button type="button" className="primary-button small" onClick={applyEvoltMacros}>
+                    Use Evolt's macros
+                  </button>
+                )}
+              </div>
             </div>
-            <button type="button" className="primary-button small" onClick={applyBmrGoal}>
-              Use for my goal
-            </button>
           </div>
         )}
         {goalStatus && <div className="search-status">{goalStatus}</div>}
 
-        <form className="manual-form" onSubmit={submit}>
+        <form className="manual-form scan-form" onSubmit={submit}>
           <div className="scan-form-head">
             <strong>Add a scan</strong>
             <button type="button" className="scan-button" onClick={() => fileRef.current?.click()}
-              title="Photograph your Evolt result sheet to auto-fill">
-              📷 Scan result sheet
+              title="Photograph your Evolt sheet — reads what it can">
+              📷 Scan sheet
             </button>
           </div>
           <input ref={fileRef} type="file" accept="image/*" capture="environment"
@@ -166,18 +229,91 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
             <span>Date</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
-          <div className="manual-row">
-            <input type="number" step="any" min="0" placeholder={`Weight (${massUnit})`}
-              value={weight} onChange={(e) => setWeight(e.target.value)} />
-            <input type="number" step="any" min="0" placeholder="Body fat (%)"
-              value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} />
+
+          {/* Numeric metric groups, mirroring the sheet's sections. */}
+          {SCAN_GROUPS.map((group) => (
+            <div key={group} className="scan-group">
+              <h4>{group}</h4>
+              <div className="scan-grid">
+                {SCAN_FIELDS.filter((f) => f.group === group).map((def) => (
+                  <label key={def.key} className="scan-field">
+                    <span>{def.label} <em>{fieldUnit(def, units)}</em></span>
+                    <input type="number" step="any" inputMode="decimal"
+                      value={vals[def.key] ?? ''} onChange={(e) => setVal(def.key, e.target.value)} />
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Segmental analysis */}
+          <div className="scan-group">
+            <h4>Segmental analysis ({massUnit})</h4>
+            <div className="seg-grid">
+              <div className="seg-head"><span /><span>Lean</span><span>Fat</span></div>
+              {SEGMENTS.map((seg) => (
+                <div key={seg.key} className="seg-row">
+                  <span className="seg-label">{seg.label}</span>
+                  <input type="number" step="any" placeholder="lean"
+                    value={vals[`seg_${seg.key}_lean`] ?? ''} onChange={(e) => setVal(`seg_${seg.key}_lean`, e.target.value)} />
+                  <input type="number" step="any" placeholder="fat"
+                    value={vals[`seg_${seg.key}_fat`] ?? ''} onChange={(e) => setVal(`seg_${seg.key}_fat`, e.target.value)} />
+                </div>
+              ))}
+            </div>
+            <div className="scan-grid">
+              <label className="scan-field">
+                <span>Upper–lower balance</span>
+                <select value={upperLower} onChange={(e) => setUpperLower(e.target.value as typeof upperLower)}>
+                  <option value="">—</option>
+                  <option value="balanced">Balanced</option>
+                  <option value="unbalanced">Unbalanced</option>
+                </select>
+              </label>
+              <label className="scan-field">
+                <span>Left–right balance</span>
+                <select value={leftRight} onChange={(e) => setLeftRight(e.target.value as typeof leftRight)}>
+                  <option value="">—</option>
+                  <option value="balanced">Balanced</option>
+                  <option value="unbalanced">Unbalanced</option>
+                </select>
+              </label>
+            </div>
           </div>
-          <div className="manual-row">
-            <input type="number" step="any" min="0" placeholder={`Muscle mass (${massUnit})`}
-              value={muscle} onChange={(e) => setMuscle(e.target.value)} />
-            <input type="number" step="any" min="0" placeholder="BMR (kcal)"
-              value={bmr} onChange={(e) => setBmr(e.target.value)} />
+
+          {/* Evolt nutrition recommendation */}
+          <div className="scan-group">
+            <h4>Evolt nutrition recommendation</h4>
+            <div className="scan-grid">
+              <label className="scan-field"><span>Calories low</span>
+                <input type="number" step="any" value={vals.rec_cal_low ?? ''} onChange={(e) => setVal('rec_cal_low', e.target.value)} /></label>
+              <label className="scan-field"><span>Calories high</span>
+                <input type="number" step="any" value={vals.rec_cal_high ?? ''} onChange={(e) => setVal('rec_cal_high', e.target.value)} /></label>
+              <label className="scan-field"><span>Protein g</span>
+                <input type="number" step="any" value={vals.rec_protein ?? ''} onChange={(e) => setVal('rec_protein', e.target.value)} /></label>
+              <label className="scan-field"><span>Carbs g</span>
+                <input type="number" step="any" value={vals.rec_carbs ?? ''} onChange={(e) => setVal('rec_carbs', e.target.value)} /></label>
+              <label className="scan-field"><span>Fat g</span>
+                <input type="number" step="any" value={vals.rec_fat ?? ''} onChange={(e) => setVal('rec_fat', e.target.value)} /></label>
+            </div>
           </div>
+
+          {/* Supplements */}
+          <div className="scan-group">
+            <h4>Supplement recommendation</h4>
+            <div className="scan-grid">
+              <label className="scan-field">
+                <span>Suggested goal</span>
+                <select value={suppGoal} onChange={(e) => setSuppGoal(e.target.value as SupplementGoal | '')}>
+                  <option value="">—</option>
+                  {SUPPLEMENT_GOALS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
+                </select>
+              </label>
+            </div>
+            <textarea className="scan-supps" rows={2} placeholder="Supplements (one per line, or comma-separated)"
+              value={supplements} onChange={(e) => setSupplements(e.target.value)} />
+          </div>
+
           <input placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
           <button type="submit" className="primary-button">Save scan</button>
         </form>
@@ -189,10 +325,11 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
                 <div className="scan-row-main">
                   <strong>{formatShortDate(s.date)}</strong>
                   <span className="scan-metrics">
-                    {s.weightKg != null && <span>{imperial ? Math.round(kgToLb(s.weightKg) * 10) / 10 : Math.round(s.weightKg * 10) / 10} {massUnit}</span>}
+                    {s.weightKg != null && <span>{units === 'imperial' ? Math.round(kgToLb(s.weightKg) * 10) / 10 : Math.round(s.weightKg * 10) / 10} {massUnit}</span>}
                     {s.bodyFatPct != null && <span>{s.bodyFatPct}% fat</span>}
-                    {s.muscleMassKg != null && <span>{imperial ? Math.round(kgToLb(s.muscleMassKg) * 10) / 10 : Math.round(s.muscleMassKg * 10) / 10} {massUnit} muscle</span>}
+                    {s.muscleMassKg != null && <span>{units === 'imperial' ? Math.round(kgToLb(s.muscleMassKg) * 10) / 10 : Math.round(s.muscleMassKg * 10) / 10} {massUnit} muscle</span>}
                     {s.bmr != null && <span>{s.bmr} BMR</span>}
+                    {s.bwiScore != null && <span>BWI {s.bwiScore}</span>}
                   </span>
                   {s.note && <span className="scan-note">{s.note}</span>}
                 </div>

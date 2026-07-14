@@ -133,24 +133,95 @@ export interface CoachingDoc {
   updatedAt: string;
 }
 
+/** Lean + fat mass (kg) for one body segment in the Evolt segmental analysis. */
+export interface SegmentMass {
+  leanKg?: number;
+  fatKg?: number;
+}
+
+export type SupplementGoal = 'fat_loss' | 'muscle_gain' | 'optimal_health';
+
 /**
- * One body-composition scan (e.g. from an Evolt 360), logged by date. Mass
- * fields are stored canonically in kilograms; the UI converts for display based
- * on the user's unit preference. Every metric is optional so a partial scan (or
- * a partial OCR read) still saves.
+ * One body-composition scan (e.g. from an Evolt 360), logged by date. Captures
+ * the full Evolt sheet. Mass/length fields are stored canonically (kg, cm); the
+ * UI converts for display based on the user's unit preference. Every metric is
+ * optional so a partial scan (or a partial OCR read) still saves.
  */
 export interface BodyScan {
   id: string;
   /** ISO date "YYYY-MM-DD" of the scan. */
   date: string;
-  /** Body weight in kilograms. */
+
+  // --- Body composition (Evolt 1–13) ---
+  /** Body weight (kg). */
   weightKg?: number;
-  /** Body fat percentage. */
-  bodyFatPct?: number;
-  /** Skeletal muscle mass in kilograms. */
+  /** Lean body mass (kg). */
+  leanBodyMassKg?: number;
+  /** Skeletal muscle mass (kg). */
   muscleMassKg?: number;
-  /** Measured basal metabolic rate, kcal/day. */
+  /** Protein mass (kg). */
+  proteinKg?: number;
+  /** Mineral mass (kg). */
+  mineralKg?: number;
+  /** Total body water (kg). */
+  totalBodyWaterKg?: number;
+  /** Body fat mass (kg). */
+  bodyFatMassKg?: number;
+  /** Subcutaneous fat mass (kg). */
+  subcutaneousFatMassKg?: number;
+  /** Visceral fat mass (kg). */
+  visceralFatMassKg?: number;
+  /** Visceral fat area (cm²). */
+  visceralFatAreaCm2?: number;
+  /** Total body fat percentage (%). */
+  bodyFatPct?: number;
+  /** Visceral fat level (index). */
+  visceralFatLevel?: number;
+  /** Intracellular fluid (kg). */
+  icfKg?: number;
+  /** Extracellular fluid (kg). */
+  ecfKg?: number;
+
+  // --- Energy (Evolt 14–15) ---
+  /** Basal metabolic rate (kcal/day). */
   bmr?: number;
+  /** Total energy expenditure (kcal/day). */
+  tee?: number;
+
+  // --- Indices (Evolt 16–17, 19–20) ---
+  /** Biological age (years). */
+  bioAge?: number;
+  /** BWI score (out of 10). */
+  bwiScore?: number;
+  /** Abdominal circumference (cm). */
+  abdominalCircumferenceCm?: number;
+  /** Waist-to-hip ratio. */
+  waistToHipRatio?: number;
+
+  // --- Segmental analysis (Evolt 18) ---
+  segmental?: {
+    leftArm?: SegmentMass;
+    rightArm?: SegmentMass;
+    torso?: SegmentMass;
+    leftLeg?: SegmentMass;
+    rightLeg?: SegmentMass;
+  };
+  /** Upper-lower body balance (true = balanced). */
+  upperLowerBalanced?: boolean;
+  /** Left-right body balance (true = balanced). */
+  leftRightBalanced?: boolean;
+
+  // --- Evolt nutrition recommendation (Evolt 21–24) ---
+  recCaloriesLow?: number;
+  recCaloriesHigh?: number;
+  recProteinG?: number;
+  recCarbsG?: number;
+  recFatG?: number;
+
+  // --- Supplement recommendation ---
+  supplementGoal?: SupplementGoal;
+  supplements?: string[];
+
   /** Optional free-text note. */
   note?: string;
 }
