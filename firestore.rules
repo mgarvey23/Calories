@@ -14,8 +14,18 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/coaches/$(request.auth.uid));
     }
 
-    // Each user owns their diary document; a coach may read (never write) any.
+    // Each user owns their diary document; a coach may read any, and may write
+    // (only to restore a client from a backup — guarded by a confirm in the UI).
     match /users/{userId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == userId || isCoach());
+      allow write: if request.auth != null &&
+        (request.auth.uid == userId || isCoach());
+    }
+
+    // Point-in-time diary backups. Owner reads/writes their own; a coach may read
+    // (to restore a client). Snapshots are never deleted by a coach.
+    match /backups/{userId}/{doc=**} {
       allow read: if request.auth != null &&
         (request.auth.uid == userId || isCoach());
       allow write: if request.auth != null && request.auth.uid == userId;

@@ -15,11 +15,13 @@ import {
 import { GOAL_LABELS } from '../nutrition';
 import { formatLongDate, formatShortDate, todayISO } from '../dateUtils';
 import { getCoachingOnce, getUserDiaryOnce, saveCoaching } from '../services/coach';
+import { getBackupSnapshot, listBackups, type BackupMeta } from '../services/backups';
+import { saveDiary } from '../services/firestoreDiary';
 import { Calendar } from './Calendar';
 import { CalorieRing } from './CalorieRing';
 import { MacroRings } from './MacroRings';
 import { TrendChart } from './TrendChart';
-import { BodyScanChart } from './BodyScanChart';
+import { ScanHistory } from './ScanHistory';
 
 interface ClientReviewProps {
   client: RosterEntry;
@@ -105,8 +107,8 @@ export function ClientReview({ client, coachName, onBack }: ClientReviewProps) {
 
       {state.bodyScans && state.bodyScans.length > 0 && (
         <section className="review-card">
-          <h3>Body composition</h3>
-          <BodyScanChart scans={state.bodyScans} units={state.settings.profile.units} />
+          <h3>Body scans</h3>
+          <ScanHistory scans={state.bodyScans} units={state.settings.profile.units} />
         </section>
       )}
 
@@ -117,6 +119,8 @@ export function ClientReview({ client, coachName, onBack }: ClientReviewProps) {
         clientGoals={{ calories: state.settings.dailyCalorieGoal, ...state.settings.macroGoals }}
         onSaved={setCoaching}
       />
+
+      <ClientBackups client={client} onRestored={setState} />
 
       <section className="review-card">
         <h3>Day-to-day</h3>
@@ -161,6 +165,61 @@ export function ClientReview({ client, coachName, onBack }: ClientReviewProps) {
         </div>
       </section>
     </div>
+  );
+}
+
+/** Coach-side restore: list a client's backups and restore one, behind a confirm. */
+function ClientBackups({ client, onRestored }: { client: RosterEntry; onRestored: (s: DiaryState) => void }) {
+  const [backups, setBackups] = useState<BackupMeta[] | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    listBackups(client.uid).then((b) => alive && setBackups(b));
+    return () => { alive = false; };
+  }, [client.uid]);
+
+  async function restore(id: string) {
+    setStatus('Restoring…');
+    const snap = await getBackupSnapshot(client.uid, id);
+    if (!snap) { setStatus('Could not load that backup.'); setConfirmId(null); return; }
+    try {
+      await saveDiary(client.uid, snap);
+      onRestored(snap);
+      setStatus(`Restored ${client.username}'s diary from this backup.`);
+    } catch {
+      setStatus('Restore failed — check your coach access.');
+    }
+    setConfirmId(null);
+  }
+
+  if (backups && backups.length === 0) return null;
+
+  return (
+    <section className="review-card">
+      <h3>Backups</h3>
+      {backups === null && <p className="search-status">Loading…</p>}
+      {backups && backups.length > 0 && (
+        <ul className="backup-list">
+          {backups.map((b) => (
+            <li key={b.id}>
+              <span>{new Date(b.at).toLocaleString()}</span>
+              {confirmId === b.id ? (
+                <span className="backup-confirm">
+                  <span className="backup-warn">Overwrites {client.username}'s current diary.</span>
+                  <button className="primary-button small" onClick={() => restore(b.id)}>Confirm</button>
+                  <button className="link-button" onClick={() => setConfirmId(null)}>Cancel</button>
+                </span>
+              ) : (
+                <button className="link-button" onClick={() => setConfirmId(b.id)}>Restore</button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {status && <p className="search-status">{status}</p>}
+    </section>
   );
 }
 

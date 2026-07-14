@@ -4,12 +4,14 @@ import { isFirebaseConfigured } from './firebase';
 import { useFirebaseDiary } from './hooks/useFirebaseDiary';
 import { useLocalDiary } from './hooks/useLocalDiary';
 import { useCoaching } from './hooks/useCoaching';
+import { useAutoBackup } from './hooks/useAutoBackup';
 import { Calendar } from './components/Calendar';
 import { DayView } from './components/DayView';
 import { SettingsPanel } from './components/SettingsPanel';
 import { RecipesPanel } from './components/RecipesPanel';
 import { ProfilePanel } from './components/ProfilePanel';
 import { BodyScanPanel } from './components/BodyScanPanel';
+import { Dashboard, type ScreenView } from './components/Dashboard';
 import { CoachDashboard } from './components/CoachDashboard';
 import { SignIn } from './components/SignIn';
 import { saveSharedFood } from './services/sharedFoods';
@@ -93,6 +95,7 @@ function CloudTracker({
 }) {
   const diary = useFirebaseDiary(uid);
   const coaching = useCoaching(uid);
+  useAutoBackup(uid, diary.state);
 
   // Keep this client on the coach's roster (best-effort, no-op in local mode).
   useEffect(() => {
@@ -116,6 +119,7 @@ function CloudTracker({
     <TrackerView
       diary={diary as DiaryApi}
       coaching={coaching}
+      uid={uid}
       onContributeFood={(food) => saveSharedFood(food, uid)}
       headerExtra={
         <>
@@ -150,17 +154,17 @@ function TrackerView({
   headerExtra,
   onContributeFood,
   coaching,
+  uid,
 }: {
   diary: DiaryApi;
   headerExtra: ReactNode;
   onContributeFood?: (food: FoodItem) => void;
   coaching?: CoachingDoc | null;
+  uid?: string;
 }) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [recipesOpen, setRecipesOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [bodyOpen, setBodyOpen] = useState(false);
+  const [view, setView] = useState<'home' | ScreenView>('home');
+  const home = () => setView('home');
 
   // Effective daily goals: a coach's pushed target overrides the user's own.
   const t = coaching?.target;
@@ -179,72 +183,78 @@ function TrackerView({
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Calorie Tracker</h1>
+        <h1>
+          {view !== 'home' && (
+            <button className="home-button" onClick={home} aria-label="Home">‹ Home</button>
+          )}
+          Calorie Tracker
+        </h1>
         <div className="header-actions">
-          <button onClick={() => setSelectedDate(todayISO())}>Today</button>
-          <button onClick={() => setProfileOpen(true)}>Profile</button>
-          <button onClick={() => setBodyOpen(true)}>Body</button>
-          <button onClick={() => setRecipesOpen(true)}>Recipes</button>
-          <button onClick={() => setSettingsOpen(true)}>Settings</button>
+          {view === 'diary' && (
+            <button onClick={() => setSelectedDate(todayISO())}>Today</button>
+          )}
           {headerExtra}
         </div>
       </header>
 
-      <main className="app-main">
-        <div className="calendar-column">
-          <Calendar
-            state={diary.state}
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-          />
-        </div>
-        <div className="day-column">
-          <DayView
-            state={diary.state}
-            date={selectedDate}
-            onAdd={handleAdd}
-            onRemove={(meal, id) => diary.removeEntry(selectedDate, meal, id)}
-            onQuantityChange={(meal, id, qty) =>
-              diary.updateEntryQuantity(selectedDate, meal, id, qty)
-            }
-            onToggleFavorite={diary.toggleFavorite}
-            onTogglePin={diary.togglePin}
-            onContributeFood={onContributeFood}
-            coaching={coaching}
-          />
-        </div>
-      </main>
+      {view === 'home' && (
+        <main className="app-main-single">
+          <Dashboard state={diary.state} goal={effectiveGoals.calories} onNavigate={setView} />
+        </main>
+      )}
 
-      {settingsOpen && (
+      {view === 'diary' && (
+        <main className="app-main">
+          <div className="calendar-column">
+            <Calendar state={diary.state} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+          </div>
+          <div className="day-column">
+            <DayView
+              state={diary.state}
+              date={selectedDate}
+              onAdd={handleAdd}
+              onRemove={(meal, id) => diary.removeEntry(selectedDate, meal, id)}
+              onQuantityChange={(meal, id, qty) => diary.updateEntryQuantity(selectedDate, meal, id, qty)}
+              onToggleFavorite={diary.toggleFavorite}
+              onTogglePin={diary.togglePin}
+              onContributeFood={onContributeFood}
+              coaching={coaching}
+            />
+          </div>
+        </main>
+      )}
+
+      {view === 'settings' && (
         <SettingsPanel
           state={diary.state}
           onUpdateSettings={diary.updateSettings}
           onReplaceState={diary.replaceState}
-          onClose={() => setSettingsOpen(false)}
+          onClose={home}
+          uid={uid}
         />
       )}
 
-      {recipesOpen && (
+      {view === 'recipes' && (
         <RecipesPanel
           recipes={diary.state.recipes}
           usdaApiKey={diary.state.settings.usdaApiKey}
           onSave={diary.saveRecipe}
           onDelete={diary.deleteRecipe}
-          onClose={() => setRecipesOpen(false)}
+          onClose={home}
         />
       )}
 
-      {profileOpen && (
+      {view === 'profile' && (
         <ProfilePanel
           profile={diary.state.settings.profile}
           onSave={diary.updateSettings}
-          onClose={() => setProfileOpen(false)}
+          onClose={home}
           days={diary.state.days}
           goals={effectiveGoals}
         />
       )}
 
-      {bodyOpen && (
+      {view === 'body' && (
         <BodyScanPanel
           scans={diary.state.bodyScans ?? []}
           units={diary.state.settings.profile.units}
@@ -252,7 +262,7 @@ function TrackerView({
           onAdd={diary.addBodyScan}
           onDelete={diary.deleteBodyScan}
           onUpdateSettings={diary.updateSettings}
-          onClose={() => setBodyOpen(false)}
+          onClose={home}
         />
       )}
     </div>

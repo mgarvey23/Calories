@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BodyScan, Settings, SupplementGoal } from '../types';
 import {
-  kgToLb,
   lbToKg,
   macroGoalsFromCalories,
   recommendedFromBmr,
@@ -15,8 +14,8 @@ import {
   fieldUnit,
   toCanonical,
 } from '../bodyScanFields';
-import { formatShortDate, todayISO } from '../dateUtils';
-import { BodyScanChart } from './BodyScanChart';
+import { todayISO } from '../dateUtils';
+import { ScanHistory } from './ScanHistory';
 
 interface BodyScanPanelProps {
   scans: BodyScan[];
@@ -59,6 +58,7 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
   const [supplements, setSupplements] = useState('');
   const [ocrStatus, setOcrStatus] = useState<string | null>(null);
   const [goalStatus, setGoalStatus] = useState<string | null>(null);
+  const [tab, setTab] = useState<'add' | 'history'>(scans.length > 0 ? 'history' : 'add');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const setVal = (k: string, v: string) => setVals((p) => ({ ...p, [k]: v }));
@@ -176,6 +176,7 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
     onAdd(scan);
     setVals({}); setNote(''); setSupplements(''); setSuppGoal('');
     setUpperLower(''); setLeftRight(''); setDate(todayISO()); setOcrStatus('Saved.');
+    setTab('history');
   }
 
   return (
@@ -187,12 +188,17 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
         </header>
 
         {scans.length > 0 && (
-          <section className="profile-progress">
-            <BodyScanChart scans={scans} units={units} />
-          </section>
+          <div className="scan-history-tabs top-tabs">
+            <button type="button" className={`seg-btn ${tab === 'add' ? 'active' : ''}`} onClick={() => setTab('add')}>Add scan</button>
+            <button type="button" className={`seg-btn ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>History</button>
+          </div>
         )}
 
-        {(bmrGoal != null || recScan) && (
+        {tab === 'history' && scans.length > 0 && (
+          <ScanHistory scans={scans} units={units} onDelete={onDelete} />
+        )}
+
+        {tab === 'add' && (bmrGoal != null || recScan) && (
           <div className="bmr-card">
             <div className="bmr-card-main">
               <span className="bmr-sub">Set your daily goal from your scan:</span>
@@ -213,6 +219,7 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
         )}
         {goalStatus && <div className="search-status">{goalStatus}</div>}
 
+        {tab === 'add' && (
         <form className="manual-form scan-form" onSubmit={submit}>
           <div className="scan-form-head">
             <strong>Add a scan</strong>
@@ -317,26 +324,6 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
           <input placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
           <button type="submit" className="primary-button">Save scan</button>
         </form>
-
-        {scans.length > 0 && (
-          <ul className="scan-list">
-            {scans.map((s) => (
-              <li key={s.id} className="scan-row">
-                <div className="scan-row-main">
-                  <strong>{formatShortDate(s.date)}</strong>
-                  <span className="scan-metrics">
-                    {s.weightKg != null && <span>{units === 'imperial' ? Math.round(kgToLb(s.weightKg) * 10) / 10 : Math.round(s.weightKg * 10) / 10} {massUnit}</span>}
-                    {s.bodyFatPct != null && <span>{s.bodyFatPct}% fat</span>}
-                    {s.muscleMassKg != null && <span>{units === 'imperial' ? Math.round(kgToLb(s.muscleMassKg) * 10) / 10 : Math.round(s.muscleMassKg * 10) / 10} {massUnit} muscle</span>}
-                    {s.bmr != null && <span>{s.bmr} BMR</span>}
-                    {s.bwiScore != null && <span>BWI {s.bwiScore}</span>}
-                  </span>
-                  {s.note && <span className="scan-note">{s.note}</span>}
-                </div>
-                <button className="remove-button" onClick={() => onDelete(s.id)} aria-label="Delete scan">×</button>
-              </li>
-            ))}
-          </ul>
         )}
       </div>
     </div>
