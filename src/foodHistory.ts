@@ -2,7 +2,7 @@
 // re-logged in one tap without searching again. Computed on the fly from
 // existing entries — no extra data is stored.
 
-import type { DiaryState, FoodItem } from './types';
+import type { DiaryState, FoodItem, MealType } from './types';
 import { MEAL_TYPES } from './types';
 
 /** Identity for de-duping foods across entries (same product / manual food). */
@@ -13,15 +13,19 @@ function foodKey(f: FoodItem): string {
 /**
  * Most-recently-logged distinct foods, newest first, tie-broken by how often
  * they've been logged. Scans every day's entries in date order.
+ *
+ * Pass a `meal` to only consider foods logged into that meal — so a food added
+ * to breakfast shows up in breakfast's recents but not dinner's.
  */
-export function recentFoods(state: DiaryState, limit = 8): FoodItem[] {
+export function recentFoods(state: DiaryState, meal?: MealType, limit = 8): FoodItem[] {
   const seen = new Map<string, { food: FoodItem; count: number; order: number }>();
   let order = 0;
+  const meals = meal ? [meal] : MEAL_TYPES;
 
   for (const date of Object.keys(state.days).sort()) {
     const day = state.days[date];
-    for (const meal of MEAL_TYPES) {
-      for (const entry of day.meals[meal]) {
+    for (const m of meals) {
+      for (const entry of day.meals[m]) {
         const key = foodKey(entry.food);
         const existing = seen.get(key);
         if (existing) {

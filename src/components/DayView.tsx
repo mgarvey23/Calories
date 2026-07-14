@@ -24,7 +24,13 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
   const total = dayCalories(day);
   const macros = roundMacros(dayMacros(day));
   const goal = state.settings.dailyCalorieGoal;
-  const recent = useMemo(() => recentFoods(state), [state.days]);
+  // Recents are per-meal: a food logged to breakfast only offers itself as a
+  // quick-add under breakfast, not every meal.
+  const recentByMeal = useMemo(() => {
+    const map = {} as Record<MealType, FoodItem[]>;
+    for (const meal of MEAL_TYPES) map[meal] = recentFoods(state, meal);
+    return map;
+  }, [state.days]);
   const [analysis, setAnalysis] = useState<{ food: FoodItem; meal: MealType } | null>(null);
 
   return (
@@ -54,7 +60,7 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
           entries={day.meals[meal]}
           usdaApiKey={state.settings.usdaApiKey}
           jordanPriority={state.settings.jordanPriority}
-          recent={recent}
+          recent={recentByMeal[meal]}
           favorites={state.favorites}
           recipes={state.recipes}
           onAdd={(food, qty) => onAdd(meal, food, qty)}
