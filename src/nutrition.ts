@@ -12,6 +12,8 @@ export type GoalType = 'lose' | 'maintain' | 'gain';
 export type Units = 'imperial' | 'metric';
 
 export interface Profile {
+  /** The person's real/display name, shown to their coach. */
+  name?: string;
   age?: number;
   sex?: Sex;
   heightCm?: number;

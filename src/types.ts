@@ -230,6 +230,8 @@ export interface BodyScan {
 export interface RosterEntry {
   uid: string;
   username: string;
+  /** The person's real name, if set (shown to the coach). */
+  displayName?: string;
   /** ISO timestamp of the client's last activity/sign-in. */
   updatedAt: string;
 }

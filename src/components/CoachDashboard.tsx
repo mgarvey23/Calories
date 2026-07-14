@@ -58,7 +58,12 @@ export function CoachDashboard({ coachName, onOpenMyTracker, onSignOut }: CoachD
                 {roster.map((r) => (
                   <li key={r.uid}>
                     <button className="roster-row" onClick={() => setSelected(r)}>
-                      <span className="roster-name">{r.username}</span>
+                      <span className="roster-name">
+                        {r.displayName || r.username}
+                        {r.displayName && r.displayName !== r.username && (
+                          <span className="roster-username"> @{r.username}</span>
+                        )}
+                      </span>
                       {r.updatedAt && (
                         <span className="roster-seen">active {formatShortDate(r.updatedAt.slice(0, 10))}</span>
                       )}

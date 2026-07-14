@@ -97,10 +97,12 @@ function CloudTracker({
   const coaching = useCoaching(uid);
   useAutoBackup(uid, diary.state);
 
-  // Keep this client on the coach's roster (best-effort, no-op in local mode).
+  // Keep this client on the coach's roster by real name (best-effort; no-op in
+  // local mode). Re-runs once the diary loads and the name is known.
+  const rosterName = diary.state?.settings.profile.name;
   useEffect(() => {
-    void upsertRoster(uid, label);
-  }, [uid, label]);
+    void upsertRoster(uid, label, rosterName);
+  }, [uid, label, rosterName]);
 
   if (diary.error && !diary.state) {
     return (

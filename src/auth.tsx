@@ -9,6 +9,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
   type User,
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from './firebase';
@@ -27,12 +28,17 @@ export function usernameFromUser(user: User): string {
   return user.email?.split('@')[0] ?? 'Account';
 }
 
+/** The person's real name if they set one, else their username. */
+export function displayNameFromUser(user: User): string {
+  return user.displayName?.trim() || usernameFromUser(user);
+}
+
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   error: string | null;
   signIn: (username: string, password: string) => Promise<void>;
-  signUp: (username: string, password: string) => Promise<void>;
+  signUp: (username: string, password: string, name?: string) => Promise<void>;
   signOutUser: () => Promise<void>;
 }
 
@@ -96,11 +102,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function signUp(username: string, password: string) {
+  async function signUp(username: string, password: string, name?: string) {
     if (!auth) return;
     setError(null);
     try {
-      await createUserWithEmailAndPassword(auth, usernameToEmail(username), password);
+      const cred = await createUserWithEmailAndPassword(auth, usernameToEmail(username), password);
+      const trimmed = name?.trim();
+      if (trimmed) await updateProfile(cred.user, { displayName: trimmed });
     } catch (err) {
       setError(describe(err));
       throw err;

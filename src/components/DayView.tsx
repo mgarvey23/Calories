@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { CoachingDoc, DiaryState, FoodItem, MealType } from '../types';
 import { MEAL_TYPES, dayCalories, dayMacros, emptyDay, roundMacros } from '../types';
-import { formatLongDate } from '../dateUtils';
+import { formatLongDate, todayISO } from '../dateUtils';
+import { suggestFoods } from '../mealSuggestions';
 import { MealSection } from './MealSection';
 import { CalorieRing } from './CalorieRing';
 import { MacroRings } from './MacroRings';
@@ -34,6 +35,19 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
     : state.settings.macroGoals;
   const [analysis, setAnalysis] = useState<{ food: FoodItem; meal: MealType } | null>(null);
 
+  // End-of-day balance suggestions: once the day is well underway (and only for
+  // today), suggest low-impact foods to help finish out the calorie/macro goals.
+  const suggestion = useMemo(() => {
+    if (date !== todayISO()) return null;
+    if (total <= 0 || total < goal * 0.5) return null;
+    const gaps = {
+      protein: macroGoals.protein - macros.protein,
+      carbs: macroGoals.carbs - macros.carbs,
+      fat: macroGoals.fat - macros.fat,
+    };
+    return suggestFoods(goal - total, gaps);
+  }, [date, total, goal, macroGoals, macros]);
+
   return (
     <div className="day-view">
       <div className="day-summary">
@@ -56,6 +70,27 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
           <CoachAdjustment coaching={coaching} />
         )}
       </div>
+
+      {suggestion && suggestion.foods.length > 0 && (
+        <div className="suggestion-card">
+          <span className="suggestion-msg">{suggestion.message}</span>
+          <div className="chip-row">
+            {suggestion.foods.map((food) => (
+              <button
+                key={food.id}
+                type="button"
+                className="quick-chip"
+                onClick={() => onAdd('snack', { ...food, id: crypto.randomUUID() }, 1)}
+                title={`Add ${food.name} to snacks (${food.calories} kcal)`}
+              >
+                {food.name}
+                <span className="chip-cals">{food.calories}</span>
+              </button>
+            ))}
+          </div>
+          <span className="suggestion-hint">Tap to add to snacks</span>
+        </div>
+      )}
 
       {MEAL_TYPES.map((meal) => (
         <MealSection

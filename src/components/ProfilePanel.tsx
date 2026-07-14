@@ -36,6 +36,7 @@ const GOALS: GoalType[] = ['lose', 'maintain', 'gain'];
 export function ProfilePanel({ profile, onSave, onClose, days, goals }: ProfilePanelProps) {
   const p = { ...DEFAULT_PROFILE, ...profile };
   const [units, setUnits] = useState<Units>(p.units);
+  const [name, setName] = useState(p.name ?? '');
   const [age, setAge] = useState(p.age ? String(p.age) : '');
   const [sex, setSex] = useState<Sex | ''>(p.sex ?? '');
   const [activity, setActivity] = useState<ActivityLevel>(p.activity);
@@ -70,6 +71,7 @@ export function ProfilePanel({ profile, onSave, onClose, days, goals }: ProfileP
       if (k !== undefined) weightKg = k;
     }
     return {
+      name: name.trim() || undefined,
       age: numOr(age),
       sex: sex || undefined,
       heightCm,
@@ -79,7 +81,7 @@ export function ProfilePanel({ profile, onSave, onClose, days, goals }: ProfileP
       ratePerWeek: numOr(rate) ?? 0,
       units,
     };
-  }, [units, ft, inch, cm, kg, lb, age, sex, activity, goalType, rate]);
+  }, [units, name, ft, inch, cm, kg, lb, age, sex, activity, goalType, rate]);
 
   const maintenance = maintenanceCalories(built);
   const recommended = recommendedCalories(built);
@@ -105,6 +107,12 @@ export function ProfilePanel({ profile, onSave, onClose, days, goals }: ProfileP
             <TrendChart days={days} goals={goals} />
           </section>
         )}
+
+        <label className="field">
+          <span>Your name</span>
+          <input type="text" placeholder="Shown to your coach" value={name}
+            onChange={(e) => setName(e.target.value)} />
+        </label>
 
         <div className="unit-toggle">
           <button className={units === 'imperial' ? 'active' : ''} onClick={() => setUnits('imperial')}>

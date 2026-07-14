@@ -14,6 +14,7 @@ import {
 } from '../diaryOps';
 import { defaultState, loadState } from '../storage';
 import { saveDiary, subscribeDiary } from '../services/firestoreDiary';
+import { auth } from '../firebase';
 
 const SAVE_DEBOUNCE_MS = 700;
 
@@ -43,6 +44,11 @@ export function useFirebaseDiary(uid: string) {
         // No cloud document yet: seed from any local diary, else defaults.
         const local = loadState();
         const seed = Object.keys(local.days).length > 0 ? local : defaultState();
+        // Seed the real name from the account's display name (set at sign-up).
+        const displayName = auth?.currentUser?.displayName?.trim();
+        if (displayName && !seed.settings.profile.name) {
+          seed.settings.profile.name = displayName;
+        }
         setState(seed);
         void saveDiary(uid, seed);
       },

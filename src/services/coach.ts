@@ -40,12 +40,12 @@ export async function isCoachAccount(uid: string): Promise<boolean> {
  * Record/refresh this client's roster entry so a coach can list everyone by
  * name. Best-effort; ignores failures (e.g. offline).
  */
-export async function upsertRoster(uid: string, username: string): Promise<void> {
+export async function upsertRoster(uid: string, username: string, displayName?: string): Promise<void> {
   if (!db) return;
   try {
     await setDoc(
       doc(db, 'roster', uid),
-      { uid, username, updatedAt: serverTimestamp() },
+      { uid, username, displayName: displayName?.trim() || username, updatedAt: serverTimestamp() },
       { merge: true },
     );
   } catch (err) {
@@ -59,10 +59,11 @@ export async function listRoster(): Promise<RosterEntry[]> {
   try {
     const snap = await getDocs(collection(db, 'roster'));
     const rows = snap.docs.map((d) => {
-      const data = d.data() as { uid?: string; username?: string; updatedAt?: { toMillis?: () => number } };
+      const data = d.data() as { uid?: string; username?: string; displayName?: string; updatedAt?: { toMillis?: () => number } };
       return {
         uid: data.uid ?? d.id,
         username: data.username ?? d.id,
+        displayName: data.displayName,
         updatedAt:
           data.updatedAt?.toMillis?.() != null
             ? new Date(data.updatedAt.toMillis!()).toISOString()

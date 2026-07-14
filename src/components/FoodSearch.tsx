@@ -54,6 +54,7 @@ export function FoodSearch(props: FoodSearchProps) {
   const [error, setError] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [recipesOpen, setRecipesOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // Debounced search as the user types.
@@ -148,6 +149,17 @@ export function FoodSearch(props: FoodSearchProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        {recipes.length > 0 && (
+          <button
+            type="button"
+            className={`scan-button ${recipesOpen ? 'active' : ''}`}
+            onClick={() => setRecipesOpen((o) => !o)}
+            title="Add one of your recipes"
+            aria-label="Add a recipe"
+          >
+            📖
+          </button>
+        )}
         <button
           type="button"
           className="scan-button"
@@ -158,6 +170,30 @@ export function FoodSearch(props: FoodSearchProps) {
           📷
         </button>
       </div>
+
+      {recipesOpen && recipes.length > 0 && (
+        <div className="recipe-picker">
+          <span className="chip-label">Add a recipe</span>
+          <ul className="recipe-picker-list">
+            {recipes.map((r) => {
+              const serving = recipeServingFood(r);
+              return (
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    className="recipe-picker-row"
+                    onClick={() => { onAdd(serving, 1); setRecipesOpen(false); }}
+                  >
+                    <span>{r.name}</span>
+                    <span className="recipe-picker-cals">{serving.calories} kcal</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {loading && <div className="search-status">Searching…</div>}
       {error && <div className="search-status error">{error}</div>}
 
@@ -165,25 +201,6 @@ export function FoodSearch(props: FoodSearchProps) {
         <div className="quick-adds">
           {favorites.length > 0 && (
             <ChipRow label="★ Favorites" foods={favorites} onPick={handleQuickAdd} />
-          )}
-          {recipes.length > 0 && (
-            <div className="chip-section">
-              <span className="chip-label">Recipes</span>
-              <div className="chip-row">
-                {recipes.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    className="quick-chip recipe-chip"
-                    onClick={() => onAdd(recipeServingFood(r), 1)}
-                    title={`Add 1 serving of ${r.name}`}
-                  >
-                    {r.name}
-                    <span className="chip-cals">{recipeServingFood(r).calories}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           )}
           {pinned.length > 0 && (
             <ChipRow label="📌 Pinned" foods={pinned} onPick={handleQuickAdd} />
