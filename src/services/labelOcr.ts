@@ -16,12 +16,38 @@ export interface ParsedLabel {
   servingUnit?: string;
 }
 
-/** What we could pull off an Evolt body-scan sheet. Masses are in kilograms. */
+/**
+ * What we could pull off an Evolt body-scan sheet. Values are the numbers as
+ * printed on the sheet (the sheet doesn't tag units per value, so masses come
+ * back in whatever unit the sheet used — the form treats them as display-unit
+ * values). Every field is optional; OCR of a dense sheet is best-effort.
+ */
 export interface ParsedBodyScan {
   weightKg?: number;
-  bodyFatPct?: number;
+  leanBodyMassKg?: number;
   muscleMassKg?: number;
+  proteinKg?: number;
+  mineralKg?: number;
+  totalBodyWaterKg?: number;
+  bodyFatMassKg?: number;
+  subcutaneousFatMassKg?: number;
+  visceralFatMassKg?: number;
+  visceralFatAreaCm2?: number;
+  bodyFatPct?: number;
+  visceralFatLevel?: number;
+  icfKg?: number;
+  ecfKg?: number;
   bmr?: number;
+  tee?: number;
+  bioAge?: number;
+  bwiScore?: number;
+  abdominalCircumferenceCm?: number;
+  waistToHipRatio?: number;
+  recCaloriesLow?: number;
+  recCaloriesHigh?: number;
+  recProteinG?: number;
+  recCarbsG?: number;
+  recFatG?: number;
 }
 
 /** Run OCR on an image file and return the raw recognised text. */
@@ -44,11 +70,6 @@ export async function recognizeLabel(
   } finally {
     await worker.terminate();
   }
-}
-
-/** Round to one decimal place. */
-function round1(n: number): number {
-  return Math.round(n * 10) / 10;
 }
 
 /** First capture group parsed as a float, or undefined if no match. */
@@ -132,29 +153,57 @@ function labelledNum(text: string, keyword: RegExp): { value: number; unit?: str
 }
 
 /**
- * Parse an Evolt 360 result sheet into structured body-composition values.
- * Masses are normalised to kilograms (a value tagged "lb" is converted).
- * Everything is optional — OCR on a photographed sheet is imperfect.
+ * Parse an Evolt 360 result sheet into structured values. Best-effort: the sheet
+ * is dense, so this reads whatever labels OCR recovered and leaves the rest for
+ * manual entry. Values are returned as printed (the sheet doesn't tag units per
+ * value); the form treats them as display-unit numbers.
  */
 export function parseEvoltScan(text: string): ParsedBodyScan {
   const flat = text.replace(/\s+/g, ' ');
-  const toKg = (v: number, unit?: string) => (unit === 'lb' || unit === 'lbs' ? v / 2.20462 : v);
+  const out: ParsedBodyScan = {};
 
-  let weightKg: number | undefined;
-  const w = labelledNum(flat, /\bweight\b/) ?? labelledNum(flat, /body\s*weight/);
-  if (w) weightKg = round1(toKg(w.value, w.unit));
+  // Simple labelled fields: keyword -> first number after it.
+  const grab = (kw: RegExp) => labelledNum(flat, kw)?.value;
+  const inRange = (v: number | undefined, lo: number, hi: number) =>
+    v != null && v >= lo && v <= hi ? v : undefined;
 
-  let bodyFatPct: number | undefined;
-  const bf = labelledNum(flat, /body\s*fat(?:\s*percentage)?/) ?? labelledNum(flat, /\bfat\s*%/);
-  if (bf && bf.value > 0 && bf.value < 80) bodyFatPct = bf.value;
+  out.weightKg = grab(/\bweight\b/) ?? grab(/body\s*weight/);
+  out.leanBodyMassKg = grab(/lean\s*body\s*mass/);
+  out.muscleMassKg = grab(/skeletal\s*muscle\s*mass/) ?? grab(/muscle\s*mass/);
+  // Composition protein is a small mass (~<100); nutrition protein is grams and
+  // comes later — keep only the small one here.
+  out.proteinKg = inRange(grab(/\bprotein\b/), 0, 100);
+  out.mineralKg = grab(/\bmineral\b/);
+  out.totalBodyWaterKg = grab(/total\s*body\s*water/);
+  out.bodyFatMassKg = grab(/body\s*fat\s*mass/);
+  out.subcutaneousFatMassKg = grab(/subcutaneous\s*fat\s*mass/);
+  out.visceralFatMassKg = grab(/visceral\s*fat\s*mass/);
+  out.visceralFatAreaCm2 = grab(/visceral\s*fat\s*area/);
+  out.bodyFatPct = inRange(grab(/total\s*body\s*fat\s*percentage/) ?? grab(/body\s*fat\s*percentage/), 1, 80);
+  out.visceralFatLevel = inRange(grab(/visceral\s*fat\s*level/), 1, 60);
+  out.icfKg = grab(/intracellular\s*fluid/) ?? grab(/\bicf\b/);
+  out.ecfKg = grab(/extracellular\s*fluid/) ?? grab(/\becf\b/);
+  out.bmr = inRange(grab(/\bbmr\b/) ?? grab(/basal\s*metabolic\s*rate/), 500, 5000);
+  out.tee = inRange(grab(/\btee\b/) ?? grab(/total\s*energy\s*expenditure/), 800, 8000);
+  out.bioAge = inRange(grab(/bio\s*age/), 5, 120);
+  out.bwiScore = inRange(grab(/bwi/), 0, 10);
+  out.abdominalCircumferenceCm = grab(/abdominal\s*circumference/);
+  out.waistToHipRatio = inRange(grab(/waist\s*to\s*hip\s*ratio/) ?? grab(/waist.?hip/), 0.4, 1.5);
 
-  let muscleMassKg: number | undefined;
-  const mm = labelledNum(flat, /skeletal\s*muscle\s*mass/) ?? labelledNum(flat, /muscle\s*mass/);
-  if (mm) muscleMassKg = round1(toKg(mm.value, mm.unit));
+  // Evolt nutrition recommendation: "CALORIES 3527 - 3627", "PROTEIN 265g - 272g".
+  const cal = flat.match(/calories[^0-9]{0,10}(\d{3,5})\s*[-–]\s*(\d{3,5})/i);
+  if (cal) { out.recCaloriesLow = parseInt(cal[1], 10); out.recCaloriesHigh = parseInt(cal[2], 10); }
+  const macroG = (kw: RegExp): number | undefined => {
+    const m = flat.match(new RegExp(kw.source + String.raw`[^0-9]{0,10}(\d{2,4})\s*g`, 'i'));
+    return m ? parseInt(m[1], 10) : undefined;
+  };
+  // The "…g" suffix distinguishes the grams recommendation from the composition
+  // masses (which have no trailing g).
+  out.recProteinG = macroG(/\bprotein\b/);
+  out.recCarbsG = macroG(/carbohydrate?s?/) ?? macroG(/\bcarbs?\b/);
+  out.recFatG = macroG(/\bfat\b/);
 
-  let bmr: number | undefined;
-  const b = labelledNum(flat, /\bbmr\b/) ?? labelledNum(flat, /basal\s*metabolic\s*rate/);
-  if (b && b.value >= 500 && b.value <= 5000) bmr = Math.round(b.value);
-
-  return { weightKg, bodyFatPct, muscleMassKg, bmr };
+  // Drop undefineds so the caller only sees fields we actually read.
+  (Object.keys(out) as (keyof ParsedBodyScan)[]).forEach((k) => { if (out[k] == null) delete out[k]; });
+  return out;
 }

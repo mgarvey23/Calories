@@ -900,3 +900,28 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 .bmr-card-main { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.85rem; }
 .bmr-sub { color: var(--muted); }
 .bmr-sub strong, .bmr-card-main strong { color: var(--text); }
+
+/* Full Evolt body-scan panel ---------------------------------------------- */
+.scan-panel { max-width: 560px; }
+.scan-metric-select { font-size: 0.82rem; padding: 0.3rem 0.5rem; max-width: 60%; }
+.apply-goal-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.35rem; }
+.scan-group { margin-top: 0.9rem; }
+.scan-group h4 {
+  margin: 0 0 0.5rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--accent-strong); border-bottom: 1px solid var(--border); padding-bottom: 0.25rem;
+}
+.scan-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+.scan-field { display: flex; flex-direction: column; gap: 2px; font-size: 0.75rem; color: var(--muted); }
+.scan-field > span { display: flex; justify-content: space-between; gap: 0.3rem; }
+.scan-field em { font-style: normal; color: var(--accent-strong); font-size: 0.68rem; }
+.scan-field input, .scan-field select { width: 100%; }
+.seg-grid { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.6rem; }
+.seg-head, .seg-row { display: grid; grid-template-columns: 5rem 1fr 1fr; gap: 0.4rem; align-items: center; }
+.seg-head { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.seg-label { font-size: 0.8rem; }
+.seg-row input { width: 100%; }
+.scan-supps { font: inherit; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); resize: vertical; width: 100%; margin-top: 0.5rem; }
+
+@media (min-width: 560px) {
+  .scan-grid { grid-template-columns: repeat(3, 1fr); }
+}
