@@ -48,6 +48,9 @@ if (isFirebaseConfigured) {
   // automatically when the connection returns.
   dbInstance = initializeFirestore(app, {
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    // Optional fields (e.g. a body scan with only some metrics filled) can be
+    // undefined; without this, setDoc rejects the whole write and data is lost.
+    ignoreUndefinedProperties: true,
   });
 }
 

@@ -63,7 +63,11 @@ export function useFirebaseDiary(uid: string) {
         stateRef.current = next;
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => {
-          void saveDiary(uid, next);
+          saveDiary(uid, next).catch((err) => {
+            // Surface the failure instead of silently losing the write.
+            console.error('Failed to save diary:', err);
+            setError('Could not save your latest changes — check your connection.');
+          });
         }, SAVE_DEBOUNCE_MS);
         return next;
       });
