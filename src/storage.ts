@@ -26,6 +26,7 @@ export function defaultState(): DiaryState {
     favorites: [],
     recipes: [],
     bodyScans: [],
+    pinnedFoods: {},
   };
 }
 
@@ -72,6 +73,7 @@ function normalize(input: Partial<DiaryState>): DiaryState {
     favorites: input.favorites ?? [],
     recipes: input.recipes ?? [],
     bodyScans: input.bodyScans ?? [],
+    pinnedFoods: input.pinnedFoods ?? {},
   };
 }
 

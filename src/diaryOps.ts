@@ -3,7 +3,7 @@
 // these so the mutation logic lives in exactly one place.
 
 import type { BodyScan, DiaryState, FoodItem, MealEntry, MealType, Recipe, Settings } from './types';
-import { emptyDay, foodKey } from './types';
+import { emptyDay, foodKey, isPinned } from './types';
 
 export function addEntryOp(
   state: DiaryState,
@@ -106,4 +106,15 @@ export function addBodyScanOp(state: DiaryState, scan: BodyScan): DiaryState {
 
 export function deleteBodyScanOp(state: DiaryState, scanId: string): DiaryState {
   return { ...state, bodyScans: (state.bodyScans ?? []).filter((s) => s.id !== scanId) };
+}
+
+/** Pin the food to a meal's quick-adds, or unpin it if already pinned. */
+export function togglePinOp(state: DiaryState, meal: MealType, food: FoodItem): DiaryState {
+  const pins = state.pinnedFoods ?? {};
+  const current = pins[meal] ?? [];
+  const key = foodKey(food);
+  const next = isPinned(current, food)
+    ? current.filter((f) => foodKey(f) !== key)
+    : [{ ...food }, ...current];
+  return { ...state, pinnedFoods: { ...pins, [meal]: next } };
 }

@@ -7,6 +7,7 @@ import {
   entryMacros,
   hasMacros,
   isFavorite,
+  isPinned,
   roundMacros,
 } from '../types';
 import { FoodSearch } from './FoodSearch';
@@ -16,13 +17,15 @@ interface MealSectionProps {
   entries: MealEntry[];
   usdaApiKey: string;
   jordanPriority: JordanPriority;
-  recent: FoodItem[];
+  /** Foods pinned to this meal as quick-adds (opt-in). */
+  pinned: FoodItem[];
   favorites: FoodItem[];
   recipes: Recipe[];
   onAdd: (food: FoodItem, quantity: number) => void;
   onRemove: (entryId: string) => void;
   onQuantityChange: (entryId: string, quantity: number) => void;
   onToggleFavorite: (food: FoodItem) => void;
+  onTogglePin: (food: FoodItem) => void;
   onShowAnalysis: (food: FoodItem) => void;
   onContributeFood?: (food: FoodItem) => void;
 }
@@ -30,8 +33,8 @@ interface MealSectionProps {
 /** One meal bucket for the selected day: its entries plus a search box. */
 export function MealSection(props: MealSectionProps) {
   const {
-    meal, entries, usdaApiKey, jordanPriority, recent, favorites, recipes,
-    onAdd, onRemove, onQuantityChange, onToggleFavorite, onShowAnalysis, onContributeFood,
+    meal, entries, usdaApiKey, jordanPriority, pinned, favorites, recipes,
+    onAdd, onRemove, onQuantityChange, onToggleFavorite, onTogglePin, onShowAnalysis, onContributeFood,
   } = props;
   const total = entriesCalories(entries);
   const macros = roundMacros(entriesMacros(entries));
@@ -93,14 +96,24 @@ export function MealSection(props: MealSectionProps) {
                 />
                 <span className="entry-cals">{entryCalories(entry)} kcal</span>
                 {entry.food.source !== 'recipe' && (
-                  <button
-                    className={`star-button ${isFavorite(favorites, entry.food) ? 'active' : ''}`}
-                    onClick={() => onToggleFavorite(entry.food)}
-                    title={isFavorite(favorites, entry.food) ? 'Remove from favorites' : 'Save to favorites'}
-                    aria-label="Toggle favorite"
-                  >
-                    {isFavorite(favorites, entry.food) ? '★' : '☆'}
-                  </button>
+                  <>
+                    <button
+                      className={`star-button ${isPinned(pinned, entry.food) ? 'active' : ''}`}
+                      onClick={() => onTogglePin(entry.food)}
+                      title={isPinned(pinned, entry.food) ? 'Unpin from this meal' : 'Pin to this meal as a quick-add'}
+                      aria-label="Toggle pin"
+                    >
+                      {isPinned(pinned, entry.food) ? '📌' : '📍'}
+                    </button>
+                    <button
+                      className={`star-button ${isFavorite(favorites, entry.food) ? 'active' : ''}`}
+                      onClick={() => onToggleFavorite(entry.food)}
+                      title={isFavorite(favorites, entry.food) ? 'Remove from favorites' : 'Save to favorites'}
+                      aria-label="Toggle favorite"
+                    >
+                      {isFavorite(favorites, entry.food) ? '★' : '☆'}
+                    </button>
+                  </>
                 )}
                 <button
                   className="remove-button"
@@ -119,7 +132,7 @@ export function MealSection(props: MealSectionProps) {
         meal={meal}
         usdaApiKey={usdaApiKey}
         jordanPriority={jordanPriority}
-        recent={recent}
+        pinned={pinned}
         favorites={favorites}
         recipes={recipes}
         onAdd={onAdd}

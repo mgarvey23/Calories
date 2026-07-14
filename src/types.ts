@@ -174,6 +174,8 @@ export interface DiaryState {
   recipes: Recipe[];
   /** Body-composition scans over time (e.g. Evolt 360). */
   bodyScans: BodyScan[];
+  /** Foods the user has pinned as quick-adds, per meal (opt-in, not automatic). */
+  pinnedFoods: Partial<Record<MealType, FoodItem[]>>;
 }
 
 // --- Derived helpers -------------------------------------------------------
@@ -261,6 +263,13 @@ export function isFavorite(favorites: FoodItem[], food: FoodItem): boolean {
   return favorites.some((f) => foodKey(f) === key);
 }
 
+/** True if a food is already pinned to the given meal's quick-adds. */
+export function isPinned(pinned: FoodItem[] | undefined, food: FoodItem): boolean {
+  if (!pinned) return false;
+  const key = foodKey(food);
+  return pinned.some((f) => foodKey(f) === key);
+}
+
 /** Total calories + macros for an entire recipe (all servings). */
 export function recipeTotals(recipe: Recipe): { calories: number } & Macros {
   const calories = entriesCalories(recipe.ingredients);
@@ -303,4 +312,5 @@ export interface DiaryApi {
   deleteRecipe: (recipeId: string) => void;
   addBodyScan: (scan: BodyScan) => void;
   deleteBodyScan: (scanId: string) => void;
+  togglePin: (meal: MealType, food: FoodItem) => void;
 }

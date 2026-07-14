@@ -1,14 +1,23 @@
 import { useRef, useState } from 'react';
-import type { BodyScan } from '../types';
-import { kgToLb, lbToKg, type Units } from '../nutrition';
+import type { BodyScan, Settings } from '../types';
+import {
+  kgToLb,
+  lbToKg,
+  macroGoalsFromCalories,
+  recommendedFromBmr,
+  type Profile,
+  type Units,
+} from '../nutrition';
 import { formatShortDate, todayISO } from '../dateUtils';
 import { BodyScanChart } from './BodyScanChart';
 
 interface BodyScanPanelProps {
   scans: BodyScan[];
   units: Units;
+  profile: Profile;
   onAdd: (scan: BodyScan) => void;
   onDelete: (scanId: string) => void;
+  onUpdateSettings: (patch: Partial<Settings>) => void;
   onClose: () => void;
 }
 
@@ -18,9 +27,20 @@ interface BodyScanPanelProps {
  * the result sheet (OCR). Masses are entered/shown in the user's unit but stored
  * canonically in kilograms.
  */
-export function BodyScanPanel({ scans, units, onAdd, onDelete, onClose }: BodyScanPanelProps) {
+export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdateSettings, onClose }: BodyScanPanelProps) {
   const imperial = units === 'imperial';
   const massUnit = imperial ? 'lb' : 'kg';
+
+  // Most recent scan that carries a measured BMR — offer to base the goal on it.
+  const latestBmr = scans.find((s) => s.bmr != null)?.bmr;
+  const bmrGoal = latestBmr != null ? recommendedFromBmr(latestBmr, profile) : null;
+  const [goalStatus, setGoalStatus] = useState<string | null>(null);
+
+  function applyBmrGoal() {
+    if (bmrGoal == null) return;
+    onUpdateSettings({ dailyCalorieGoal: bmrGoal, macroGoals: macroGoalsFromCalories(bmrGoal) });
+    setGoalStatus(`Daily goal set to ${bmrGoal} kcal from your measured BMR.`);
+  }
 
   const [date, setDate] = useState(todayISO());
   const [weight, setWeight] = useState('');
@@ -107,6 +127,21 @@ export function BodyScanPanel({ scans, units, onAdd, onDelete, onClose }: BodySc
             <BodyScanChart scans={scans} units={units} />
           </section>
         )}
+
+        {bmrGoal != null && (
+          <div className="bmr-card">
+            <div className="bmr-card-main">
+              <span>Measured BMR <strong>{latestBmr}</strong> kcal</span>
+              <span className="bmr-sub">
+                → suggests a <strong>{bmrGoal}</strong> kcal/day goal for your activity &amp; target
+              </span>
+            </div>
+            <button type="button" className="primary-button small" onClick={applyBmrGoal}>
+              Use for my goal
+            </button>
+          </div>
+        )}
+        {goalStatus && <div className="search-status">{goalStatus}</div>}
 
         <form className="manual-form" onSubmit={submit}>
           <div className="scan-form-head">

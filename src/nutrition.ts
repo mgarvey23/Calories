@@ -94,17 +94,34 @@ export function maintenanceCalories(p: Profile): number | null {
 }
 
 /**
- * Recommended daily calorie target for the profile's goal, or null if inputs
- * are incomplete. ~3500 kcal per pound, spread across the week. Floored at a
- * safe minimum so extreme inputs don't produce dangerous targets.
+ * Apply the goal adjustment (deficit/surplus) to a maintenance/TDEE figure.
+ * ~3500 kcal per pound spread across the week, floored at a safe minimum so
+ * extreme inputs don't produce dangerous targets.
  */
-export function recommendedCalories(p: Profile): number | null {
-  const tdee = maintenanceCalories(p);
-  if (tdee === null) return null;
+function applyGoalAdjustment(tdee: number, p: Profile): number {
   const dailyAdjust = (p.ratePerWeek || 0) * 3500 / 7;
   let target = tdee;
   if (p.goalType === 'lose') target -= dailyAdjust;
   else if (p.goalType === 'gain') target += dailyAdjust;
   const floor = p.sex === 'female' ? 1200 : 1500;
   return Math.max(floor, Math.round(target / 10) * 10);
+}
+
+/**
+ * Recommended daily calorie target for the profile's goal, or null if inputs
+ * are incomplete.
+ */
+export function recommendedCalories(p: Profile): number | null {
+  const tdee = maintenanceCalories(p);
+  if (tdee === null) return null;
+  return applyGoalAdjustment(tdee, p);
+}
+
+/**
+ * Recommended daily calorie target using a *measured* BMR (e.g. from an Evolt
+ * scan) instead of the Mifflin-St Jeor estimate. Only needs the profile's
+ * activity level and goal, so it works even without age/height/weight.
+ */
+export function recommendedFromBmr(measuredBmr: number, p: Profile): number {
+  return applyGoalAdjustment(measuredBmr * ACTIVITY_FACTORS[p.activity], p);
 }

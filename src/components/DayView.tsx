@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { CoachingDoc, DiaryState, FoodItem, MealType } from '../types';
 import { MEAL_TYPES, dayCalories, dayMacros, emptyDay, roundMacros } from '../types';
 import { formatLongDate } from '../dateUtils';
-import { recentFoods } from '../foodHistory';
 import { MealSection } from './MealSection';
 import { CalorieRing } from './CalorieRing';
 import { MacroRings } from './MacroRings';
@@ -16,13 +15,14 @@ interface DayViewProps {
   onRemove: (meal: MealType, entryId: string) => void;
   onQuantityChange: (meal: MealType, entryId: string, quantity: number) => void;
   onToggleFavorite: (food: FoodItem) => void;
+  onTogglePin: (meal: MealType, food: FoodItem) => void;
   onContributeFood?: (food: FoodItem) => void;
   /** Coach adjustments; a pushed target overrides the day's goal + macro goals. */
   coaching?: CoachingDoc | null;
 }
 
 /** The selected day: a calorie summary against goal, then each meal. */
-export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onToggleFavorite, onContributeFood, coaching }: DayViewProps) {
+export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onToggleFavorite, onTogglePin, onContributeFood, coaching }: DayViewProps) {
   const day = state.days[date] ?? emptyDay(date);
   const total = dayCalories(day);
   const macros = roundMacros(dayMacros(day));
@@ -32,13 +32,6 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
   const macroGoals = target
     ? { protein: target.protein, carbs: target.carbs, fat: target.fat }
     : state.settings.macroGoals;
-  // Recents are per-meal: a food logged to breakfast only offers itself as a
-  // quick-add under breakfast, not every meal.
-  const recentByMeal = useMemo(() => {
-    const map = {} as Record<MealType, FoodItem[]>;
-    for (const meal of MEAL_TYPES) map[meal] = recentFoods(state, meal);
-    return map;
-  }, [state.days]);
   const [analysis, setAnalysis] = useState<{ food: FoodItem; meal: MealType } | null>(null);
 
   return (
@@ -71,13 +64,14 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
           entries={day.meals[meal]}
           usdaApiKey={state.settings.usdaApiKey}
           jordanPriority={state.settings.jordanPriority}
-          recent={recentByMeal[meal]}
+          pinned={state.pinnedFoods?.[meal] ?? []}
           favorites={state.favorites}
           recipes={state.recipes}
           onAdd={(food, qty) => onAdd(meal, food, qty)}
           onRemove={(id) => onRemove(meal, id)}
           onQuantityChange={(id, qty) => onQuantityChange(meal, id, qty)}
           onToggleFavorite={onToggleFavorite}
+          onTogglePin={(food) => onTogglePin(meal, food)}
           onShowAnalysis={(food) => setAnalysis({ food, meal })}
           onContributeFood={onContributeFood}
         />
