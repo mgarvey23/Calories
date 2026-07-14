@@ -87,7 +87,12 @@ export function ClientReview({ client, coachName, onBack }: ClientReviewProps) {
     <div className="client-review">
       <div className="review-topbar">
         <button className="link-button" onClick={onBack}>‹ Back to roster</button>
-        <h2>{client.username}</h2>
+        <h2>
+          {client.displayName || client.username}
+          {client.displayName && client.displayName !== client.username && (
+            <span className="roster-username"> @{client.username}</span>
+          )}
+        </h2>
       </div>
 
       <section className="review-card">

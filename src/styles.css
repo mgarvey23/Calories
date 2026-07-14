@@ -985,3 +985,19 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 @media (max-width: 420px) {
   .scan-detail-list { grid-template-columns: 1fr; }
 }
+
+/* Recipe picker (per-meal) ------------------------------------------------- */
+.recipe-picker { margin-top: 0.5rem; padding: 0.6rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.recipe-picker-list { list-style: none; padding: 0; margin: 0.35rem 0 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.recipe-picker-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; text-align: left; padding: 0.45rem 0.6rem; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }
+.recipe-picker-row:hover { border-color: var(--accent); color: var(--accent); }
+.recipe-picker-cals { font-size: 0.75rem; color: var(--muted); }
+.scan-button.active { border-color: var(--accent); color: var(--accent); }
+
+/* End-of-day suggestions --------------------------------------------------- */
+.suggestion-card { margin: 0.85rem 0; padding: 0.8rem 0.9rem; border-radius: var(--radius); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); background: var(--accent-soft); }
+.suggestion-msg { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.45rem; }
+.suggestion-hint { display: block; font-size: 0.72rem; color: var(--muted); margin-top: 0.4rem; }
+
+/* Roster secondary username ------------------------------------------------ */
+.roster-username { color: var(--muted); font-weight: 400; font-size: 0.8rem; }

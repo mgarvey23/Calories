@@ -10,6 +10,7 @@ import { isFirebaseConfigured } from '../firebase';
 export function SignIn({ onUseLocal }: { onUseLocal: () => void }) {
   const { signIn, signUp, error } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -17,10 +18,11 @@ export function SignIn({ onUseLocal }: { onUseLocal: () => void }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!username.trim() || password.length < 6) return;
+    if (mode === 'signup' && !name.trim()) return;
     setBusy(true);
     try {
       if (mode === 'signin') await signIn(username, password);
-      else await signUp(username, password);
+      else await signUp(username, password, name);
     } catch {
       // error surfaced via the auth context
     } finally {
@@ -41,6 +43,15 @@ export function SignIn({ onUseLocal }: { onUseLocal: () => void }) {
                 : 'Create an account — just a username and password.'}
             </p>
             <form className="auth-form" onSubmit={submit}>
+              {mode === 'signup' && (
+                <input
+                  type="text"
+                  placeholder="Your name (so your coach knows who you are)"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              )}
               <input
                 type="text"
                 placeholder="Username"
