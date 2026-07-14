@@ -509,8 +509,24 @@ select {
   width: 100%;
   max-width: 440px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  /* Cap height and scroll inside so the close button in the header is always
+     reachable, even on a very tall panel (e.g. a full body-scan sheet). */
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
 }
-.settings-header { display: flex; justify-content: space-between; align-items: center; }
+/* Keep the header (and its × close button) pinned while the panel scrolls. */
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface);
+  margin: -1.25rem -1.25rem 0.75rem;
+  padding: 1rem 1.25rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+}
 .settings-header h2 { margin: 0; font-size: 1.2rem; }
 .field { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 1rem; }
 .field > span { font-weight: 600; font-size: 0.9rem; }

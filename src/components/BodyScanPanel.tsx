@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BodyScan, Settings } from '../types';
 import {
   kgToLb,
@@ -50,6 +50,13 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
   const [note, setNote] = useState('');
   const [ocrStatus, setOcrStatus] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Close on Escape, so there's always a way out of the panel.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const numOr = (s: string): number | undefined => {
     const n = parseFloat(s);
