@@ -72,14 +72,14 @@ export function MealSection(props: MealSectionProps) {
                     {entry.food.brand && <span className="entry-brand"> · {entry.food.brand}</span>}
                   </span>
                 )}
-                <span className="entry-serving">
-                  {entry.food.servingSize * entry.quantity}
-                  {entry.food.servingUnit}
-                  {hasMacros(entry.food) && (() => {
-                    const m = roundMacros(entryMacros(entry));
-                    return <span className="entry-macros"> · P {m.protein} · C {m.carbs} · F {m.fat}</span>;
-                  })()}
-                </span>
+                {hasMacros(entry.food) && (() => {
+                  const m = roundMacros(entryMacros(entry));
+                  return (
+                    <span className="entry-serving">
+                      <span className="entry-macros">P {m.protein} · C {m.carbs} · F {m.fat}</span>
+                    </span>
+                  );
+                })()}
               </div>
               <div className="entry-controls">
                 <input

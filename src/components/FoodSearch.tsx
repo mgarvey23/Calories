@@ -39,6 +39,37 @@ const SOURCE_LABELS: Record<FoodSearchResult['source'], string> = {
   community: 'Community',
 };
 
+/** Identity for de-duping a favorite against a database result of the same food. */
+function resultKey(r: FoodSearchResult): string {
+  return `${r.name.toLowerCase()}|${Math.round(r.calories)}`;
+}
+
+/** Present a saved favorite as a search result. */
+function favoriteToResult(f: FoodItem): FoodSearchResult {
+  return {
+    name: f.name,
+    brand: f.brand,
+    source: f.source,
+    sourceId: f.sourceId,
+    servingSize: f.servingSize,
+    servingUnit: f.servingUnit,
+    calories: f.calories,
+    protein: f.protein,
+    carbs: f.carbs,
+    fat: f.fat,
+  };
+}
+
+/** Favorites whose name contains every term of the query (max a handful). */
+function matchingFavorites(favorites: FoodItem[], query: string): FoodSearchResult[] {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [];
+  return favorites
+    .filter((f) => { const n = f.name.toLowerCase(); return terms.every((t) => n.includes(t)); })
+    .slice(0, 5)
+    .map(favoriteToResult);
+}
+
 /**
  * Type a food name, search the databases, pick a result. The chosen food's
  * calories are computed automatically from its label data; the user only sets
@@ -67,6 +98,10 @@ export function FoodSearch(props: FoodSearchProps) {
       return;
     }
     setScanned(null);
+    // Show matching favorites immediately, at the top — they're what the user
+    // most likely wants and they don't need a network round-trip.
+    const favMatches = matchingFavorites(favorites, trimmed);
+    if (favMatches.length > 0) setResults(favMatches);
     const handle = setTimeout(async () => {
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -78,8 +113,11 @@ export function FoodSearch(props: FoodSearchProps) {
           searchFoods(trimmed, { usdaApiKey, signal: controller.signal }),
           searchSharedFoods(trimmed, controller.signal),
         ]);
-        // Community contributions first, then database results.
-        const found = [...shared, ...apiFound];
+        // Favorites first, then community contributions, then database results —
+        // dropping any that duplicate a favorite already shown.
+        const favKeys = new Set(favMatches.map(resultKey));
+        const rest = [...shared, ...apiFound].filter((r) => !favKeys.has(resultKey(r)));
+        const found = [...favMatches, ...rest];
         setResults(found);
         if (found.length === 0) setError('No matches found. Try a different name or add it manually.');
       } catch (err) {
@@ -89,7 +127,7 @@ export function FoodSearch(props: FoodSearchProps) {
       }
     }, 400);
     return () => clearTimeout(handle);
-  }, [query, usdaApiKey]);
+  }, [query, usdaApiKey, favorites]);
 
   function clearSearch() {
     setQuery('');
