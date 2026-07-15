@@ -1001,3 +1001,7 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 
 /* Roster secondary username ------------------------------------------------ */
 .roster-username { color: var(--muted); font-weight: 400; font-size: 0.8rem; }
+
+/* Favorites picker rows (name + remove star) ------------------------------- */
+.fav-picker-row { display: flex; align-items: center; gap: 0.35rem; }
+.fav-picker-row .recipe-picker-row { flex: 1; min-width: 0; }
