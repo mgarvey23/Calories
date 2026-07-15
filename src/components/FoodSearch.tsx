@@ -55,6 +55,7 @@ export function FoodSearch(props: FoodSearchProps) {
   const [manualOpen, setManualOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [recipesOpen, setRecipesOpen] = useState(false);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // Debounced search as the user types.
@@ -106,9 +107,10 @@ export function FoodSearch(props: FoodSearchProps) {
     onAdd({ ...food, id: crypto.randomUUID() }, 1);
   }
 
+  // Favorites and recipes live behind their own buttons (they get long); only
+  // the small per-meal pinned list shows inline.
   const showQuickAdds =
-    query.trim().length < 2 && results.length === 0 && !scanned &&
-    (favorites.length > 0 || recipes.length > 0 || pinned.length > 0);
+    query.trim().length < 2 && results.length === 0 && !scanned && pinned.length > 0;
 
   async function handleBarcode(barcode: string) {
     setScannerOpen(false);
@@ -149,11 +151,22 @@ export function FoodSearch(props: FoodSearchProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        {favorites.length > 0 && (
+          <button
+            type="button"
+            className={`scan-button ${favoritesOpen ? 'active' : ''}`}
+            onClick={() => { setFavoritesOpen((o) => !o); setRecipesOpen(false); }}
+            title="Your favorites"
+            aria-label="Favorites"
+          >
+            ★
+          </button>
+        )}
         {recipes.length > 0 && (
           <button
             type="button"
             className={`scan-button ${recipesOpen ? 'active' : ''}`}
-            onClick={() => setRecipesOpen((o) => !o)}
+            onClick={() => { setRecipesOpen((o) => !o); setFavoritesOpen(false); }}
             title="Add one of your recipes"
             aria-label="Add a recipe"
           >
@@ -170,6 +183,35 @@ export function FoodSearch(props: FoodSearchProps) {
           📷
         </button>
       </div>
+
+      {favoritesOpen && favorites.length > 0 && (
+        <div className="recipe-picker">
+          <span className="chip-label">★ Favorites</span>
+          <ul className="recipe-picker-list">
+            {favorites.map((food) => (
+              <li key={food.id} className="fav-picker-row">
+                <button
+                  type="button"
+                  className="recipe-picker-row"
+                  onClick={() => { handleQuickAdd(food); setFavoritesOpen(false); }}
+                >
+                  <span>{food.name}{food.brand ? ` · ${food.brand}` : ''}</span>
+                  <span className="recipe-picker-cals">{food.calories} cal</span>
+                </button>
+                <button
+                  type="button"
+                  className="star-button active"
+                  onClick={() => onToggleFavorite(food)}
+                  title="Remove from favorites"
+                  aria-label="Remove from favorites"
+                >
+                  ★
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {recipesOpen && recipes.length > 0 && (
         <div className="recipe-picker">
@@ -199,9 +241,6 @@ export function FoodSearch(props: FoodSearchProps) {
 
       {showQuickAdds && (
         <div className="quick-adds">
-          {favorites.length > 0 && (
-            <ChipRow label="★ Favorites" foods={favorites} onPick={handleQuickAdd} />
-          )}
           {pinned.length > 0 && (
             <ChipRow label="📌 Pinned" foods={pinned} onPick={handleQuickAdd} />
           )}
