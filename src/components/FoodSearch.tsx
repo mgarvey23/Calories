@@ -185,7 +185,7 @@ export function FoodSearch(props: FoodSearchProps) {
                     onClick={() => { onAdd(serving, 1); setRecipesOpen(false); }}
                   >
                     <span>{r.name}</span>
-                    <span className="recipe-picker-cals">{serving.calories} kcal</span>
+                    <span className="recipe-picker-cals">{serving.calories} cal</span>
                   </button>
                 </li>
               );
@@ -220,7 +220,7 @@ export function FoodSearch(props: FoodSearchProps) {
                     {r.brand && <span className="result-brand"> · {r.brand}</span>}
                   </span>
                   <span className="result-meta">
-                    {r.calories} kcal / {r.servingSize}{r.servingUnit}
+                    {r.calories} cal / {r.servingSize}{r.servingUnit}
                     {(r.protein !== undefined || r.carbs !== undefined || r.fat !== undefined) && (
                       <span className="result-macros">
                         P {Math.round(r.protein ?? 0)} · C {Math.round(r.carbs ?? 0)} · F {Math.round(r.fat ?? 0)}
@@ -301,7 +301,7 @@ function ChipRow({
             type="button"
             className="quick-chip"
             onClick={() => onPick(food)}
-            title={`Add ${food.name} (${food.calories} kcal)`}
+            title={`Add ${food.name} (${food.calories} cal)`}
           >
             {food.name}
             <span className="chip-cals">{food.calories}</span>

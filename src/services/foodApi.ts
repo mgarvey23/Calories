@@ -373,6 +373,72 @@ export async function fetchProductByBarcode(
   }
 }
 
+// --- Built-in generic foods ------------------------------------------------
+// A small local database of common whole/generic foods so staples always turn
+// up instantly and correctly, even when the USDA API is slow or rate-limited.
+// Values are per the stated serving (grams); portion hints live in the name.
+
+interface Generic { name: string; g: number; cal: number; p: number; c: number; f: number; }
+
+const GENERIC_FOODS: Generic[] = [
+  { name: 'Canadian bacon (2 slices)', g: 57, cal: 90, p: 12, c: 1, f: 4 },
+  { name: 'Bacon (2 slices, cooked)', g: 16, cal: 90, p: 6, c: 0, f: 7 },
+  { name: 'Ham, deli sliced (2 slices)', g: 56, cal: 60, p: 10, c: 2, f: 1.5 },
+  { name: 'Pork sausage (2 links)', g: 68, cal: 210, p: 12, c: 1, f: 18 },
+  { name: 'Egg (1 large)', g: 50, cal: 72, p: 6, c: 0.4, f: 5 },
+  { name: 'Egg white (1 large)', g: 33, cal: 17, p: 3.6, c: 0.2, f: 0 },
+  { name: 'Grilled chicken breast (4 oz)', g: 113, cal: 185, p: 35, c: 0, f: 4 },
+  { name: 'Chicken thigh, boneless skinless (3 oz, cooked)', g: 85, cal: 145, p: 19, c: 0, f: 7 },
+  { name: 'Turkey breast, deli (2 oz)', g: 56, cal: 50, p: 11, c: 1, f: 0.5 },
+  { name: 'Ground beef, 90/10 (3 oz, cooked)', g: 85, cal: 184, p: 22, c: 0, f: 10 },
+  { name: 'Salmon (3 oz, cooked)', g: 85, cal: 175, p: 19, c: 0, f: 10 },
+  { name: 'Tuna, canned in water (1 can)', g: 142, cal: 100, p: 22, c: 0, f: 1 },
+  { name: 'Shrimp (3 oz, cooked)', g: 85, cal: 84, p: 20, c: 0, f: 1 },
+  { name: 'White rice (1 cup, cooked)', g: 158, cal: 205, p: 4, c: 45, f: 0.4 },
+  { name: 'Brown rice (1 cup, cooked)', g: 195, cal: 216, p: 5, c: 45, f: 1.8 },
+  { name: 'Oatmeal (1 cup, cooked)', g: 234, cal: 158, p: 6, c: 27, f: 3 },
+  { name: 'Whole wheat bread (1 slice)', g: 43, cal: 110, p: 5, c: 20, f: 1.5 },
+  { name: 'White bread (1 slice)', g: 25, cal: 66, p: 2, c: 13, f: 0.8 },
+  { name: 'English muffin (1)', g: 57, cal: 134, p: 4, c: 26, f: 1 },
+  { name: 'Bagel (1 medium)', g: 98, cal: 257, p: 10, c: 50, f: 1.5 },
+  { name: 'Cheddar cheese (1 oz)', g: 28, cal: 115, p: 7, c: 0.4, f: 9 },
+  { name: 'American cheese (1 slice)', g: 19, cal: 60, p: 3, c: 2, f: 4.5 },
+  { name: 'Milk, 2% (1 cup)', g: 244, cal: 122, p: 8, c: 12, f: 5 },
+  { name: 'Nonfat Greek yogurt (3/4 cup)', g: 170, cal: 100, p: 17, c: 6, f: 0 },
+  { name: 'Banana (1 medium)', g: 118, cal: 105, p: 1.3, c: 27, f: 0.4 },
+  { name: 'Apple (1 medium)', g: 182, cal: 95, p: 0.5, c: 25, f: 0.3 },
+  { name: 'Avocado (1/2)', g: 68, cal: 114, p: 1.3, c: 6, f: 10.5 },
+  { name: 'Peanut butter (2 tbsp)', g: 32, cal: 190, p: 7, c: 7, f: 16 },
+  { name: 'Almonds (1 oz)', g: 28, cal: 164, p: 6, c: 6, f: 14 },
+  { name: 'Broccoli (1 cup, cooked)', g: 156, cal: 55, p: 4, c: 11, f: 0.6 },
+  { name: 'Sweet potato (1 medium, baked)', g: 114, cal: 103, p: 2, c: 24, f: 0.2 },
+  { name: 'Baked potato (1 medium)', g: 173, cal: 161, p: 4, c: 37, f: 0.2 },
+  { name: 'Butter (1 tbsp)', g: 14, cal: 102, p: 0, c: 0, f: 11.5 },
+];
+
+function genericToResult(g: Generic): FoodSearchResult {
+  return {
+    name: g.name,
+    source: 'usda',
+    servingSize: g.g,
+    servingUnit: 'g',
+    calories: g.cal,
+    protein: g.p,
+    carbs: g.c,
+    fat: g.f,
+  };
+}
+
+/** Local matches for a query — every whitespace-separated term must appear. */
+function searchGenericFoods(query: string): FoodSearchResult[] {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [];
+  return GENERIC_FOODS.filter((g) => {
+    const name = g.name.toLowerCase();
+    return terms.every((t) => name.includes(t));
+  }).map(genericToResult);
+}
+
 // --- Combined text search --------------------------------------------------
 
 export interface SearchOptions {
@@ -404,7 +470,9 @@ export async function searchFoods(
     searchUsda(trimmed, usdaApiKey, signal),
   ]);
 
-  const results: FoodSearchResult[] = [];
+  // Built-in staples first so common foods always appear, even if an API is
+  // slow, down, or rate-limited.
+  const results: FoodSearchResult[] = [...searchGenericFoods(trimmed)];
   if (off.status === 'fulfilled') results.push(...off.value);
   else console.warn('Open Food Facts search failed:', off.reason);
   if (usda.status === 'fulfilled') results.push(...usda.value);

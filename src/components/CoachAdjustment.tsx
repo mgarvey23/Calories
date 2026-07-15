@@ -22,7 +22,7 @@ export function CoachAdjustment({ coaching }: CoachAdjustmentProps) {
       </div>
       {target && (
         <p className="coach-banner-target">
-          New daily target: <strong>{target.calories}</strong> kcal ·{' '}
+          New daily target: <strong>{target.calories}</strong> cal ·{' '}
           {target.protein}P / {target.carbs}C / {target.fat}F
           <span className="coach-banner-note"> — applied to your rings</span>
         </p>

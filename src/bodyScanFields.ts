@@ -61,7 +61,7 @@ export function fieldUnit(def: ScanFieldDef, units: Units): string {
   if (def.kind === 'mass') return units === 'imperial' ? 'lb' : 'kg';
   if (def.kind === 'length') return units === 'imperial' ? 'in' : 'cm';
   if (def.kind === 'pct') return '%';
-  if (def.kind === 'kcal') return 'kcal';
+  if (def.kind === 'kcal') return 'cal';
   return def.unit ?? '';
 }
 

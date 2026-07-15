@@ -60,7 +60,7 @@ export function RecipesPanel({ recipes, usdaApiKey, onSave, onDelete, onClose }:
                       <div>
                         <span className="recipe-name">{r.name}</span>
                         <span className="recipe-meta">
-                          {perServing.calories} kcal/serving · {r.servings} serving{r.servings === 1 ? '' : 's'} · {r.ingredients.length} ingredients
+                          {perServing.calories} cal/serving · {r.servings} serving{r.servings === 1 ? '' : 's'} · {r.ingredients.length} ingredients
                         </span>
                       </div>
                       <div className="recipe-item-actions">
@@ -139,7 +139,7 @@ function RecipeEditor({
                   }}
                   aria-label="Quantity"
                 />
-                <span className="entry-cals">{entryCalories(ing)} kcal</span>
+                <span className="entry-cals">{entryCalories(ing)} cal</span>
                 <button className="remove-button" onClick={() => removeIngredient(ing.id)} aria-label="Remove">×</button>
               </li>
             ))}
@@ -149,7 +149,7 @@ function RecipeEditor({
       </div>
 
       <p className="recipe-totals">
-        Total {Math.round(totals.calories)} kcal · {perServingCals} kcal per serving
+        Total {Math.round(totals.calories)} cal · {perServingCals} cal per serving
       </p>
 
       <div className="recipe-editor-actions">
@@ -255,7 +255,7 @@ function IngredientSearch({
                   {r.name}
                   {r.brand && <span className="result-brand"> · {r.brand}</span>}
                 </span>
-                <span className="result-meta">{r.calories} kcal / {r.servingSize}{r.servingUnit}</span>
+                <span className="result-meta">{r.calories} cal / {r.servingSize}{r.servingUnit}</span>
               </button>
             </li>
           ))}

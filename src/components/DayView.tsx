@@ -81,7 +81,7 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
                 type="button"
                 className="quick-chip"
                 onClick={() => onAdd('snack', { ...food, id: crypto.randomUUID() }, 1)}
-                title={`Add ${food.name} to snacks (${food.calories} kcal)`}
+                title={`Add ${food.name} to snacks (${food.calories} cal)`}
               >
                 {food.name}
                 <span className="chip-cals">{food.calories}</span>

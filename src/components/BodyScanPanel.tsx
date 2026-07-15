@@ -79,7 +79,7 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
   function applyBmrGoal() {
     if (bmrGoal == null) return;
     onUpdateSettings({ dailyCalorieGoal: bmrGoal, macroGoals: macroGoalsFromCalories(bmrGoal) });
-    setGoalStatus(`Daily goal set to ${bmrGoal} kcal from your measured BMR.`);
+    setGoalStatus(`Daily goal set to ${bmrGoal} cal from your measured BMR.`);
   }
 
   function applyEvoltMacros() {
@@ -94,7 +94,7 @@ export function BodyScanPanel({ scans, units, profile, onAdd, onDelete, onUpdate
         ? { protein: recScan.recProteinG, carbs: recScan.recCarbsG, fat: recScan.recFatG }
         : macroGoalsFromCalories(cal);
     onUpdateSettings({ dailyCalorieGoal: cal, macroGoals: macros });
-    setGoalStatus(`Daily goal set to ${cal} kcal from Evolt's recommendation.`);
+    setGoalStatus(`Daily goal set to ${cal} cal from Evolt's recommendation.`);
   }
 
   // --- Photo OCR (best-effort pre-fill) --------------------------------------

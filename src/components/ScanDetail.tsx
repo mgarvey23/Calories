@@ -85,7 +85,7 @@ export function ScanDetail({ scan, units }: { scan: BodyScan; units: Units }) {
           <dl className="scan-detail-list">
             {(scan.recCaloriesLow != null || scan.recCaloriesHigh != null) && (
               <div className="scan-detail-row"><dt>Calories</dt>
-                <dd>{[scan.recCaloriesLow, scan.recCaloriesHigh].filter((v) => v != null).join('–')} kcal</dd></div>
+                <dd>{[scan.recCaloriesLow, scan.recCaloriesHigh].filter((v) => v != null).join('–')} cal</dd></div>
             )}
             {scan.recProteinG != null && <div className="scan-detail-row"><dt>Protein</dt><dd>{scan.recProteinG} g</dd></div>}
             {scan.recCarbsG != null && <div className="scan-detail-row"><dt>Carbs</dt><dd>{scan.recCarbsG} g</dd></div>}

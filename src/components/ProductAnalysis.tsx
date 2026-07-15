@@ -71,7 +71,7 @@ export function ProductAnalysis({ product, priority, onAddAlternative }: Product
               {suggestion.reasons.map((r, i) => <li key={i}>{r}</li>)}
             </ul>
             <div className="jordan-actions">
-              <span className="jordan-cals">{suggestion.best.calories} kcal / 100g</span>
+              <span className="jordan-cals">{suggestion.best.calories} cal / 100g</span>
               <button
                 className="primary-button small"
                 onClick={() => onAddAlternative(toFoodItem(suggestion.best!))}

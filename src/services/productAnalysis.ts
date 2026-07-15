@@ -43,7 +43,7 @@ export function generateProsCons(p: ScannedProduct): ProsCons {
     cons.push(`Nutri-Score ${p.nutriScore.toUpperCase()}`);
   }
   if (p.nova === 4) cons.push('Ultra-processed');
-  if (cal100(p) >= 400) cons.push(`Calorie-dense (${cal100(p)} kcal per 100g)`);
+  if (cal100(p) >= 400) cons.push(`Calorie-dense (${cal100(p)} cal per 100g)`);
 
   if (pros.length === 0) pros.push('Fits your day if the portion is right');
   if (cons.length === 0) cons.push('No major nutritional red flags');
@@ -62,7 +62,7 @@ export function scoreProduct(p: ScannedProduct, priority: JordanPriority): numbe
   const nutri = p.nutriScore ? NUTRISCORE_VALUE[p.nutriScore] ?? 3 : 3; // 1-5
   const nova = p.nova ?? 2; // 1-4
 
-  const calScore = clamp(100 - cal / 6, 0, 100); // 600 kcal/100g -> 0
+  const calScore = clamp(100 - cal / 6, 0, 100); // 600 cal/100g -> 0
   const proteinScore = clamp((protein / Math.max(cal, 1)) * 1500, 0, 100); // protein per calorie
   const sugarScore = clamp(100 - sugar * 3, 0, 100);
   const cleanScore = clamp(nutri * 12 + (4 - nova) * 10, 0, 100);
