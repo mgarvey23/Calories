@@ -6,7 +6,7 @@ import { addDays, todayISO, formatShortDate } from '../dateUtils';
 type Metric = 'calories' | 'protein' | 'carbs' | 'fat';
 
 const METRICS: { key: Metric; label: string; unit: string; varName: string }[] = [
-  { key: 'calories', label: 'Calories', unit: 'kcal', varName: '--accent' },
+  { key: 'calories', label: 'Calories', unit: 'cal', varName: '--accent' },
   { key: 'protein', label: 'Protein', unit: 'g', varName: '--protein' },
   { key: 'carbs', label: 'Carbs', unit: 'g', varName: '--carbs' },
   { key: 'fat', label: 'Fat', unit: 'g', varName: '--fat' },

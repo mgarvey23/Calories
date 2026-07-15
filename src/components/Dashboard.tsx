@@ -25,9 +25,9 @@ export function Dashboard({ state, goal, onNavigate }: DashboardProps) {
     : 'Add your first';
 
   const tiles: { view: ScreenView; icon: string; title: string; stat: string }[] = [
-    { view: 'diary', icon: '📅', title: "Today's Diary", stat: `${eaten} / ${goal} kcal · ${remaining >= 0 ? `${remaining} left` : `${-remaining} over`}` },
+    { view: 'diary', icon: '📅', title: "Today's Diary", stat: `${eaten} / ${goal} cal · ${remaining >= 0 ? `${remaining} left` : `${-remaining} over`}` },
     { view: 'body', icon: '📊', title: 'Body Scans', stat: bodyStat },
-    { view: 'profile', icon: '👤', title: 'Profile', stat: `Goal ${goal} kcal/day` },
+    { view: 'profile', icon: '👤', title: 'Profile', stat: `Goal ${goal} cal/day` },
     { view: 'recipes', icon: '🍳', title: 'Recipes', stat: `${state.recipes.length} saved` },
     { view: 'settings', icon: '⚙️', title: 'Settings', stat: 'Goals, backups, data' },
   ];

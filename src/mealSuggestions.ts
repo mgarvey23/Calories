@@ -88,7 +88,7 @@ export function suggestFoods(remainingCal: number, gaps: Macros, limit = 4): Sug
       .slice(0, limit)
       .map(toFood);
     return {
-      message: `About ${remainingCal} kcal and ${proteinGap}g protein left — protein-forward picks:`,
+      message: `About ${remainingCal} cal and ${proteinGap}g protein left — protein-forward picks:`,
       foods,
     };
   }
@@ -99,7 +99,7 @@ export function suggestFoods(remainingCal: number, gaps: Macros, limit = 4): Sug
     .slice(0, limit)
     .map(toFood);
   return {
-    message: `About ${remainingCal} kcal left — light options to finish your day:`,
+    message: `About ${remainingCal} cal left — light options to finish your day:`,
     foods,
   };
 }

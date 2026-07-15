@@ -192,10 +192,10 @@ export function ProfilePanel({ profile, onSave, onClose, days, goals }: ProfileP
             <>
               <div className="reco-main">
                 <span className="reco-number">{recommended}</span>
-                <span className="reco-unit">kcal / day</span>
+                <span className="reco-unit">cal / day</span>
               </div>
               <p className="reco-sub">
-                Maintenance ≈ {Math.round(maintenance!)} kcal ·{' '}
+                Maintenance ≈ {Math.round(maintenance!)} cal ·{' '}
                 {goalType === 'maintain'
                   ? 'to stay the same'
                   : `to ${goalType} ~${rate || 0} lb/week`}

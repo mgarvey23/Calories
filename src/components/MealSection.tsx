@@ -44,7 +44,7 @@ export function MealSection(props: MealSectionProps) {
       <header className="meal-header">
         <h3>{MEAL_LABELS[meal]}</h3>
         <span className="meal-total">
-          {total} kcal
+          {total} cal
           {entries.length > 0 && (
             <span className="meal-macros"> · P {macros.protein} · C {macros.carbs} · F {macros.fat}</span>
           )}
@@ -94,7 +94,7 @@ export function MealSection(props: MealSectionProps) {
                   }}
                   aria-label="Servings"
                 />
-                <span className="entry-cals">{entryCalories(entry)} kcal</span>
+                <span className="entry-cals">{entryCalories(entry)} cal</span>
                 {entry.food.source !== 'recipe' && (
                   <>
                     <button

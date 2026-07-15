@@ -101,7 +101,7 @@ export function ClientReview({ client, coachName, onBack }: ClientReviewProps) {
           {p.sex && <span>{p.sex === 'male' ? 'Male' : 'Female'}</span>}
           {p.weightKg && <span>{Math.round(p.weightKg * 2.20462)} lb</span>}
           <span>Goal: {GOAL_LABELS[p.goalType]}</span>
-          <span>Target: {goals.calories} kcal</span>
+          <span>Target: {goals.calories} cal</span>
         </div>
       </section>
 
@@ -145,7 +145,7 @@ export function ClientReview({ client, coachName, onBack }: ClientReviewProps) {
                 <div className="review-meal" key={meal}>
                   <div className="review-meal-head">
                     <strong>{MEAL_LABELS[meal]}</strong>
-                    <span>{entriesCalories(entries)} kcal · P {m.protein} · C {m.carbs} · F {m.fat}</span>
+                    <span>{entriesCalories(entries)} cal · P {m.protein} · C {m.carbs} · F {m.fat}</span>
                   </div>
                   <ul className="review-entries">
                     {entries.map((e) => {
@@ -155,7 +155,7 @@ export function ClientReview({ client, coachName, onBack }: ClientReviewProps) {
                           <span>{e.food.name}{e.food.brand ? ` · ${e.food.brand}` : ''}</span>
                           <span className="review-entry-meta">
                             {e.food.servingSize * e.quantity}{e.food.servingUnit} ·{' '}
-                            {Math.round(e.food.calories * e.quantity)} kcal
+                            {Math.round(e.food.calories * e.quantity)} cal
                             {hasMacros(e.food) && ` · P ${em.protein} · C ${em.carbs} · F ${em.fat}`}
                           </span>
                         </li>
