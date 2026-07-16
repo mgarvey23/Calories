@@ -84,7 +84,7 @@ export function DayView({ state, date, onAdd, onRemove, onQuantityChange, onTogg
                 title={`Add ${food.name} to snacks (${food.calories} cal)`}
               >
                 {food.name}
-                <span className="chip-cals">{food.calories}</span>
+                <span className="chip-macros">P {Math.round(food.protein ?? 0)} · C {Math.round(food.carbs ?? 0)} · F {Math.round(food.fat ?? 0)}</span>
               </button>
             ))}
           </div>

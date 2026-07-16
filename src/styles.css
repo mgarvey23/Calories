@@ -1005,3 +1005,6 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 /* Favorites picker rows (name + remove star) ------------------------------- */
 .fav-picker-row { display: flex; align-items: center; gap: 0.35rem; }
 .fav-picker-row .recipe-picker-row { flex: 1; min-width: 0; }
+
+/* Suggestion chip macros (instead of a calorie number) -------------------- */
+.chip-macros { font-size: 0.68rem; color: var(--muted); background: var(--surface); border-radius: 999px; padding: 0 0.4rem; white-space: nowrap; }
